@@ -67,6 +67,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   val chatError: StateFlow<String?> = runtime.chatError
   val chatHealthOk: StateFlow<Boolean> = runtime.chatHealthOk
   val chatThinkingLevel: StateFlow<String> = runtime.chatThinkingLevel
+  val chatGuardMode: StateFlow<String?> = runtime.chatGuardMode
+  val chatGuardTask: StateFlow<String?> = runtime.chatGuardTask
   val chatStreamingAssistantText: StateFlow<String?> = runtime.chatStreamingAssistantText
   val chatPendingToolCalls = runtime.chatPendingToolCalls
   val chatSessions = runtime.chatSessions
@@ -190,6 +192,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
   fun setChatThinkingLevel(level: String) {
     runtime.setChatThinkingLevel(level)
+  }
+
+  fun setChatGuardSettings(guardMode: String?, guardTask: String?) {
+    runtime.setChatGuardSettings(guardMode = guardMode, guardTask = guardTask)
   }
 
   fun switchChatSession(sessionKey: String) {

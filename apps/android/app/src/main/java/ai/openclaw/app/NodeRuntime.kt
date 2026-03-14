@@ -517,6 +517,8 @@ class NodeRuntime(context: Context) {
   val chatError: StateFlow<String?> = chat.errorText
   val chatHealthOk: StateFlow<Boolean> = chat.healthOk
   val chatThinkingLevel: StateFlow<String> = chat.thinkingLevel
+  val chatGuardMode: StateFlow<String?> = chat.guardMode
+  val chatGuardTask: StateFlow<String?> = chat.guardTask
   val chatStreamingAssistantText: StateFlow<String?> = chat.streamingAssistantText
   val chatPendingToolCalls: StateFlow<List<ChatPendingToolCall>> = chat.pendingToolCalls
   val chatSessions: StateFlow<List<ChatSessionEntry>> = chat.sessions
@@ -885,6 +887,10 @@ class NodeRuntime(context: Context) {
 
   fun setChatThinkingLevel(level: String) {
     chat.setThinkingLevel(level)
+  }
+
+  fun setChatGuardSettings(guardMode: String?, guardTask: String?) {
+    chat.setGuardSettings(guardMode = guardMode, guardTask = guardTask)
   }
 
   fun switchChatSession(sessionKey: String) {

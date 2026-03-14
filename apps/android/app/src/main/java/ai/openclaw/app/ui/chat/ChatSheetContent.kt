@@ -16,6 +16,16 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,8 +33,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -62,6 +74,8 @@ fun ChatSheetContent(viewModel: MainViewModel) {
   val sessionKey by viewModel.chatSessionKey.collectAsState()
   val mainSessionKey by viewModel.mainSessionKey.collectAsState()
   val thinkingLevel by viewModel.chatThinkingLevel.collectAsState()
+  val guardMode by viewModel.chatGuardMode.collectAsState()
+  val guardTask by viewModel.chatGuardTask.collectAsState()
   val streamingAssistantText by viewModel.chatStreamingAssistantText.collectAsState()
   val pendingToolCalls by viewModel.chatPendingToolCalls.collectAsState()
   val sessions by viewModel.chatSessions.collectAsState()
@@ -74,6 +88,7 @@ fun ChatSheetContent(viewModel: MainViewModel) {
   val context = LocalContext.current
   val resolver = context.contentResolver
   val scope = rememberCoroutineScope()
+  var showSessionSettings by remember { mutableStateOf(false) }
 
   val attachments = remember { mutableStateListOf<PendingImageAttachment>() }
 
@@ -108,6 +123,7 @@ fun ChatSheetContent(viewModel: MainViewModel) {
       mainSessionKey = mainSessionKey,
       healthOk = healthOk,
       onSelectSession = { key -> viewModel.switchChatSession(key) },
+      onOpenSettings = { showSessionSettings = true },
     )
 
     if (!errorText.isNullOrBlank()) {
@@ -153,6 +169,19 @@ fun ChatSheetContent(viewModel: MainViewModel) {
       )
     }
   }
+
+  if (showSessionSettings) {
+    SessionGuardSettingsDialog(
+      sessionKey = sessionKey,
+      guardMode = guardMode,
+      guardTask = guardTask,
+      onDismiss = { showSessionSettings = false },
+      onSave = { nextMode, nextTask ->
+        viewModel.setChatGuardSettings(nextMode, nextTask)
+        showSessionSettings = false
+      },
+    )
+  }
 }
 
 @Composable
@@ -162,6 +191,7 @@ private fun ChatThreadSelector(
   mainSessionKey: String,
   healthOk: Boolean,
   onSelectSession: (String) -> Unit,
+  onOpenSettings: () -> Unit,
 ) {
   val sessionOptions = resolveSessionChoices(sessionKey, sessions, mainSessionKey = mainSessionKey)
   val currentSessionLabel =
@@ -179,6 +209,13 @@ private fun ChatThreadSelector(
         color = mobileTextSecondary,
       )
       Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+        IconButton(onClick = onOpenSettings) {
+          Icon(
+            imageVector = Icons.Default.Settings,
+            contentDescription = "Session settings",
+            tint = mobileTextSecondary,
+          )
+        }
         Text(
           text = currentSessionLabel,
           style = mobileCallout.copy(fontWeight = FontWeight.SemiBold),
@@ -216,6 +253,102 @@ private fun ChatThreadSelector(
       }
     }
   }
+}
+
+@Composable
+private fun SessionGuardSettingsDialog(
+  sessionKey: String,
+  guardMode: String?,
+  guardTask: String?,
+  onDismiss: () -> Unit,
+  onSave: (String?, String?) -> Unit,
+) {
+  var selectedMode by remember(sessionKey, guardMode) { mutableStateOf(guardMode.orEmpty()) }
+  var taskText by remember(sessionKey, guardTask) { mutableStateOf(guardTask.orEmpty()) }
+  var showModeMenu by remember { mutableStateOf(false) }
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text(text = "Session Guard", color = mobileText) },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+          text = "Control whether this session can write files and when source edits require an explicit task.",
+          style = mobileCallout,
+          color = mobileTextSecondary,
+        )
+        Box(modifier = Modifier.fillMaxWidth()) {
+          Surface(
+            onClick = { showModeMenu = true },
+            shape = RoundedCornerShape(12.dp),
+            color = Color.White,
+            border = BorderStroke(1.dp, mobileBorderStrong),
+          ) {
+            Row(
+              modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+              Text(
+                text = when (selectedMode) {
+                  "watch" -> "Watch"
+                  "assist" -> "Assist"
+                  "implement" -> "Implement"
+                  else -> "Default"
+                },
+                style = mobileCallout.copy(fontWeight = FontWeight.SemiBold),
+                color = mobileText,
+              )
+              Icon(Icons.Default.ArrowDropDown, contentDescription = "Select guard mode", tint = mobileTextSecondary)
+            }
+          }
+          DropdownMenu(expanded = showModeMenu, onDismissRequest = { showModeMenu = false }) {
+            listOf("" to "Default", "watch" to "Watch", "assist" to "Assist", "implement" to "Implement").forEach { (value, label) ->
+              DropdownMenuItem(
+                text = { Text(label) },
+                onClick = {
+                  selectedMode = value
+                  if (value != "implement") {
+                    taskText = ""
+                  }
+                  showModeMenu = false
+                },
+              )
+            }
+          }
+        }
+        OutlinedTextField(
+          value = taskText,
+          onValueChange = { taskText = it },
+          modifier = Modifier.fillMaxWidth(),
+          enabled = selectedMode == "implement",
+          minLines = 2,
+          maxLines = 4,
+          label = { Text("Implement task") },
+          placeholder = { Text(if (selectedMode == "implement") "Example: fix latency display in operator-overview.ts" else "Enabled only for Implement mode") },
+          colors =
+            OutlinedTextFieldDefaults.colors(
+              focusedBorderColor = mobileAccent,
+              unfocusedBorderColor = mobileBorderStrong,
+              focusedLabelColor = mobileAccent,
+              unfocusedLabelColor = mobileTextSecondary,
+            ),
+        )
+      }
+    },
+    confirmButton = {
+      androidx.compose.material3.TextButton(
+        onClick = { onSave(selectedMode.ifEmpty { null }, taskText.ifBlank { null }) },
+      ) {
+        Text("Save")
+      }
+    },
+    dismissButton = {
+      androidx.compose.material3.TextButton(onClick = onDismiss) {
+        Text("Cancel")
+      }
+    },
+  )
 }
 
 @Composable

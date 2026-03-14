@@ -42,6 +42,12 @@ class ChatController(
   private val _thinkingLevel = MutableStateFlow("off")
   val thinkingLevel: StateFlow<String> = _thinkingLevel.asStateFlow()
 
+  private val _guardMode = MutableStateFlow<String?>(null)
+  val guardMode: StateFlow<String?> = _guardMode.asStateFlow()
+
+  private val _guardTask = MutableStateFlow<String?>(null)
+  val guardTask: StateFlow<String?> = _guardTask.asStateFlow()
+
   private val _pendingRunCount = MutableStateFlow(0)
   val pendingRunCount: StateFlow<Int> = _pendingRunCount.asStateFlow()
 
@@ -106,7 +112,34 @@ class ChatController(
     if (key.isEmpty()) return
     if (key == _sessionKey.value) return
     _sessionKey.value = key
+    syncCurrentSessionSettings()
     scope.launch { bootstrap(forceHealth = true) }
+  }
+
+  fun setGuardSettings(guardMode: String?, guardTask: String?) {
+    val sessionKey = _sessionKey.value
+    val normalizedMode = guardMode?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
+    val normalizedTask = guardTask?.trim()?.takeIf { it.isNotEmpty() }
+    _guardMode.value = normalizedMode
+    _guardTask.value = if (normalizedMode == "implement") normalizedTask else null
+    scope.launch {
+      try {
+        val params =
+          buildJsonObject {
+            put("key", JsonPrimitive(sessionKey))
+            put("guardMode", normalizedMode?.let(::JsonPrimitive) ?: JsonNull)
+            when {
+              normalizedMode != "implement" -> put("guardTask", JsonNull)
+              normalizedTask != null -> put("guardTask", JsonPrimitive(normalizedTask))
+            }
+          }
+        session.request("sessions.patch", params.toString())
+        fetchSessions(limit = 50)
+      } catch (err: Throwable) {
+        _errorText.value = err.message
+        syncCurrentSessionSettings()
+      }
+    }
   }
 
   fun sendMessage(
@@ -284,9 +317,10 @@ class ChatController(
           put("includeGlobal", JsonPrimitive(true))
           put("includeUnknown", JsonPrimitive(false))
           if (limit != null && limit > 0) put("limit", JsonPrimitive(limit))
-        }
+      }
       val res = session.request("sessions.list", params.toString())
       _sessions.value = parseSessions(res)
+      syncCurrentSessionSettings()
     } catch (_: Throwable) {
       // best-effort
     }
@@ -340,6 +374,7 @@ class ChatController(
             _messages.value = history.messages
             _sessionId.value = history.sessionId
             history.thinkingLevel?.trim()?.takeIf { it.isNotEmpty() }?.let { _thinkingLevel.value = it }
+            fetchSessions(limit = 50)
           } catch (_: Throwable) {
             // best-effort
           }
@@ -497,7 +532,15 @@ class ChatController(
       if (key.isEmpty()) return@mapNotNull null
       val updatedAt = obj["updatedAt"].asLongOrNull()
       val displayName = obj["displayName"].asStringOrNull()?.trim()
-      ChatSessionEntry(key = key, updatedAtMs = updatedAt, displayName = displayName)
+      val guardMode = obj["guardMode"].asStringOrNull()?.trim()?.takeIf { it.isNotEmpty() }
+      val guardTask = obj["guardTask"].asStringOrNull()?.trim()?.takeIf { it.isNotEmpty() }
+      ChatSessionEntry(
+        key = key,
+        updatedAtMs = updatedAt,
+        displayName = displayName,
+        guardMode = guardMode,
+        guardTask = guardTask,
+      )
     }
   }
 
@@ -516,6 +559,12 @@ class ChatController(
       "high" -> "high"
       else -> "off"
     }
+  }
+
+  private fun syncCurrentSessionSettings() {
+    val current = _sessions.value.firstOrNull { it.key == _sessionKey.value }
+    _guardMode.value = current?.guardMode
+    _guardTask.value = current?.guardTask
   }
 }
 
