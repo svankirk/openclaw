@@ -20,6 +20,7 @@ import { emitDiagnosticEvent, isDiagnosticsEnabled } from "../../infra/diagnosti
 import { generateSecureUuid } from "../../infra/secure-random.js";
 import { enqueueSystemEvent } from "../../infra/system-events.js";
 import { defaultRuntime } from "../../runtime.js";
+import { normalizeGuardMode, resolveDefaultGuardMode } from "../../sessions/guard-mode.js";
 import { estimateUsageCost, resolveModelCostConfig } from "../../utils/usage-format.js";
 import {
   buildFallbackClearedNotice,
@@ -193,6 +194,31 @@ export async function runReplyAgent(params: {
       });
     }
   };
+
+  const ensureGuardModeInitialized = async () => {
+    if (!activeSessionEntry || !activeSessionStore || !sessionKey) {
+      return;
+    }
+    const existingMode = normalizeGuardMode(activeSessionEntry.guardMode);
+    if (existingMode) {
+      return;
+    }
+    const guardMode = resolveDefaultGuardMode({
+      sessionKey,
+      entry: activeSessionEntry,
+    });
+    activeSessionEntry.guardMode = guardMode;
+    activeSessionStore[sessionKey] = activeSessionEntry;
+    if (storePath) {
+      await updateSessionStoreEntry({
+        storePath,
+        sessionKey,
+        update: async () => ({ guardMode }),
+      });
+    }
+  };
+
+  await ensureGuardModeInitialized();
 
   if (shouldSteer && isStreaming) {
     const steered = queueEmbeddedPiMessage(followupRun.run.sessionId, followupRun.prompt);

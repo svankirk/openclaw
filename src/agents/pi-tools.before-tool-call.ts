@@ -1,17 +1,31 @@
+import type { OpenClawConfig } from "../config/config.js";
 import type { ToolLoopDetectionConfig } from "../config/types.tools.js";
+import { appendInjectedAssistantMessageToTranscript } from "../gateway/server-methods/chat-transcript-inject.js";
+import { loadSessionEntry } from "../gateway/session-utils.js";
+import { emitAgentEvent } from "../infra/agent-events.js";
 import type { SessionState } from "../logging/diagnostic-session-state.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
+import { runImplementGuardScopeCheck } from "../sessions/guard-mode.guardian.js";
+import {
+  evaluateGuardedWriteAccess,
+  extractGuardedToolPaths,
+  isSourceCodePath,
+  type GuardMode,
+} from "../sessions/guard-mode.js";
 import { isPlainObject } from "../utils.js";
 import { normalizeToolName } from "./tool-policy.js";
 import type { AnyAgentTool } from "./tools/common.js";
 
 export type HookContext = {
   agentId?: string;
+  agentDir?: string;
+  config?: OpenClawConfig;
   sessionKey?: string;
   /** Ephemeral session UUID — regenerated on /new and /reset. */
   sessionId?: string;
   runId?: string;
+  workspaceDir?: string;
   loopDetection?: ToolLoopDetectionConfig;
 };
 
@@ -88,6 +102,96 @@ async function recordLoopOutcome(args: {
   }
 }
 
+function buildFenceBlockMessage(params: {
+  toolName: string;
+  mode: GuardMode;
+  reason: string;
+  attemptedPaths: string[];
+}): string {
+  const target = params.attemptedPaths.length > 0 ? params.attemptedPaths.join(", ") : "<unknown>";
+  return [
+    `[fence_block] ${params.toolName} blocked in ${params.mode} mode.`,
+    `Target: ${target}`,
+    params.reason,
+  ].join("\n");
+}
+
+function emitFenceBlockTelemetry(args: {
+  ctx?: HookContext;
+  toolName: string;
+  mode: GuardMode;
+  reason: string;
+  attemptedPaths: string[];
+}) {
+  if (!args.ctx?.runId) {
+    return;
+  }
+  emitAgentEvent({
+    runId: args.ctx.runId,
+    sessionKey: args.ctx.sessionKey,
+    stream: "tool",
+    data: {
+      phase: "fence_block",
+      name: args.toolName,
+      guardMode: args.mode,
+      attemptedPath: args.attemptedPaths[0],
+      attemptedPaths: args.attemptedPaths,
+      reason: args.reason,
+    },
+  });
+}
+
+function persistFenceBlockToTranscript(args: {
+  ctx?: HookContext;
+  toolName: string;
+  mode: GuardMode;
+  reason: string;
+  attemptedPaths: string[];
+}) {
+  const sessionKey = args.ctx?.sessionKey?.trim();
+  if (!sessionKey) {
+    return;
+  }
+  try {
+    const { entry } = loadSessionEntry(sessionKey);
+    const transcriptPath = typeof entry?.sessionFile === "string" ? entry.sessionFile.trim() : "";
+    if (!transcriptPath) {
+      return;
+    }
+    appendInjectedAssistantMessageToTranscript({
+      transcriptPath,
+      message: buildFenceBlockMessage({
+        toolName: args.toolName,
+        mode: args.mode,
+        reason: args.reason,
+        attemptedPaths: args.attemptedPaths,
+      }),
+      label: "Fence block",
+      idempotencyKey: [
+        args.ctx?.runId ?? "run",
+        args.toolName,
+        args.mode,
+        args.attemptedPaths.join("|") || "unknown",
+      ].join(":"),
+    });
+  } catch (err) {
+    log.warn(`fence block transcript append failed: tool=${args.toolName} error=${String(err)}`);
+  }
+}
+
+function tryLoadSessionEntry(sessionKey?: string) {
+  const normalized = sessionKey?.trim();
+  if (!normalized) {
+    return undefined;
+  }
+  try {
+    return loadSessionEntry(normalized).entry;
+  } catch (err) {
+    log.warn(`guard mode session lookup failed: sessionKey=${normalized} error=${String(err)}`);
+    return undefined;
+  }
+}
+
 export async function runBeforeToolCallHook(args: {
   toolName: string;
   params: unknown;
@@ -96,6 +200,70 @@ export async function runBeforeToolCallHook(args: {
 }): Promise<HookOutcome> {
   const toolName = normalizeToolName(args.toolName || "tool");
   const params = args.params;
+  const entry = tryLoadSessionEntry(args.ctx?.sessionKey);
+  const guardedWrite = evaluateGuardedWriteAccess({
+    toolName,
+    toolParams: params,
+    workspaceDir: args.ctx?.workspaceDir,
+    sessionKey: args.ctx?.sessionKey,
+    entry,
+  });
+  if (!guardedWrite.allowed) {
+    emitFenceBlockTelemetry({
+      ctx: args.ctx,
+      toolName,
+      mode: guardedWrite.mode,
+      reason: guardedWrite.reason,
+      attemptedPaths: guardedWrite.attemptedPaths,
+    });
+    persistFenceBlockToTranscript({
+      ctx: args.ctx,
+      toolName,
+      mode: guardedWrite.mode,
+      reason: guardedWrite.reason,
+      attemptedPaths: guardedWrite.attemptedPaths,
+    });
+    return {
+      blocked: true,
+      reason: guardedWrite.reason,
+    };
+  }
+
+  if (guardedWrite.mode === "implement") {
+    const attemptedPaths = extractGuardedToolPaths(toolName, params).filter(isSourceCodePath);
+    if (attemptedPaths.length > 0) {
+      const guardTask = entry?.guardTask?.trim();
+      const guardianDecision = await runImplementGuardScopeCheck({
+        attemptedPaths,
+        guardTask: guardTask ?? "",
+        toolName,
+        sessionKey: args.ctx?.sessionKey,
+        workspaceDir: args.ctx?.workspaceDir,
+        cfg: args.ctx?.config,
+        agentDir: args.ctx?.agentDir,
+      });
+      if (!guardianDecision.allowed) {
+        emitFenceBlockTelemetry({
+          ctx: args.ctx,
+          toolName,
+          mode: "implement",
+          reason: guardianDecision.reason,
+          attemptedPaths,
+        });
+        persistFenceBlockToTranscript({
+          ctx: args.ctx,
+          toolName,
+          mode: "implement",
+          reason: guardianDecision.reason,
+          attemptedPaths,
+        });
+        return {
+          blocked: true,
+          reason: guardianDecision.reason,
+        };
+      }
+    }
+  }
 
   if (args.ctx?.sessionKey) {
     const { getDiagnosticSessionState, logToolLoopAction, detectToolCallLoop, recordToolCall } =
