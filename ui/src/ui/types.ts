@@ -383,6 +383,8 @@ export type GatewaySessionRow = {
   verboseLevel?: string;
   reasoningLevel?: string;
   elevatedLevel?: string;
+  guardMode?: "watch" | "assist" | "implement";
+  guardTask?: string;
   inputTokens?: number;
   outputTokens?: number;
   totalTokens?: number;
@@ -401,6 +403,8 @@ export type SessionsPatchResult = SessionsPatchResultBase<{
   verboseLevel?: string;
   reasoningLevel?: string;
   elevatedLevel?: string;
+  guardMode?: "watch" | "assist" | "implement";
+  guardTask?: string;
 }>;
 
 export type {

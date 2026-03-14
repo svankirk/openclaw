@@ -66,6 +66,8 @@ export async function patchSession(
     fastMode?: boolean | null;
     verboseLevel?: string | null;
     reasoningLevel?: string | null;
+    guardMode?: "watch" | "assist" | "implement" | null;
+    guardTask?: string | null;
   },
 ) {
   if (!state.client || !state.connected) {
@@ -86,6 +88,12 @@ export async function patchSession(
   }
   if ("reasoningLevel" in patch) {
     params.reasoningLevel = patch.reasoningLevel;
+  }
+  if ("guardMode" in patch) {
+    params.guardMode = patch.guardMode;
+  }
+  if ("guardTask" in patch) {
+    params.guardTask = patch.guardTask;
   }
   try {
     await state.client.request("sessions.patch", params);
