@@ -36,6 +36,8 @@ export type GatewaySessionRow = {
   verboseLevel?: string;
   reasoningLevel?: string;
   elevatedLevel?: string;
+  guardMode?: "watch" | "assist" | "implement";
+  guardTask?: string;
   sendPolicy?: "allow" | "deny";
   inputTokens?: number;
   outputTokens?: number;

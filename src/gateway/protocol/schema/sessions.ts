@@ -65,6 +65,15 @@ export const SessionsPatchParamsSchema = Type.Object(
         Type.Null(),
       ]),
     ),
+    guardMode: Type.Optional(
+      Type.Union([
+        Type.Literal("watch"),
+        Type.Literal("assist"),
+        Type.Literal("implement"),
+        Type.Null(),
+      ]),
+    ),
+    guardTask: Type.Optional(Type.Union([NonEmptyString, Type.Null()])),
     elevatedLevel: Type.Optional(Type.Union([NonEmptyString, Type.Null()])),
     execHost: Type.Optional(Type.Union([NonEmptyString, Type.Null()])),
     execSecurity: Type.Optional(Type.Union([NonEmptyString, Type.Null()])),
