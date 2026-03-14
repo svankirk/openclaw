@@ -110,6 +110,8 @@ export type SessionEntry = {
   execAsk?: string;
   execNode?: string;
   responseUsage?: "on" | "off" | "tokens" | "full";
+  guardMode?: "watch" | "assist" | "implement";
+  guardTask?: string;
   providerOverride?: string;
   modelOverride?: string;
   authProfileOverride?: string;
