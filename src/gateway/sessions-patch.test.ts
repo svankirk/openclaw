@@ -218,6 +218,48 @@ describe("gateway sessions patch", () => {
     expectPatchError(result, "invalid elevatedLevel");
   });
 
+  test("persists guardMode and guardTask for implement mode", async () => {
+    const entry = expectPatchOk(
+      await runPatch({
+        patch: {
+          key: MAIN_SESSION_KEY,
+          guardMode: "implement",
+          guardTask: "fix latency display in operator-overview.ts",
+        },
+      }),
+    );
+    expect(entry.guardMode).toBe("implement");
+    expect(entry.guardTask).toBe("fix latency display in operator-overview.ts");
+  });
+
+  test("clears guardTask when guardMode changes away from implement", async () => {
+    const store: Record<string, SessionEntry> = {
+      [MAIN_SESSION_KEY]: {
+        guardMode: "implement",
+        guardTask: "fix operator latency",
+      } as SessionEntry,
+    };
+    const entry = expectPatchOk(
+      await runPatch({
+        store,
+        patch: { key: MAIN_SESSION_KEY, guardMode: "assist" },
+      }),
+    );
+    expect(entry.guardMode).toBe("assist");
+    expect(entry.guardTask).toBeUndefined();
+  });
+
+  test("rejects guardTask when guardMode is not implement", async () => {
+    const result = await runPatch({
+      patch: {
+        key: MAIN_SESSION_KEY,
+        guardMode: "assist",
+        guardTask: "fix operator latency",
+      },
+    });
+    expectPatchError(result, "guardTask can only be set");
+  });
+
   test("clears auth overrides when model patch changes", async () => {
     const store: Record<string, SessionEntry> = {
       "agent:main:main": {

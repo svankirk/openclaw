@@ -75,7 +75,7 @@ The Control UI can localize itself on first load based on your browser locale, a
 - Stream tool calls + live tool output cards in Chat (agent events)
 - Channels: WhatsApp/Telegram/Discord/Slack + plugin channels (Mattermost, etc.) status + QR login + per-channel config (`channels.status`, `web.login.*`, `config.patch`)
 - Instances: presence list + refresh (`system-presence`)
-- Sessions: list + per-session thinking/fast/verbose/reasoning overrides (`sessions.list`, `sessions.patch`)
+- Sessions: list + per-session thinking/fast/verbose/reasoning overrides and guard mode/task controls (`sessions.list`, `sessions.patch`)
 - Cron jobs: list/add/edit/run/enable/disable + run history (`cron.*`)
 - Skills: status, enable/disable, install, API key updates (`skills.*`)
 - Nodes: list + caps (`node.list`)
@@ -99,6 +99,30 @@ Cron jobs panel notes:
 - Form validation is inline with field-level errors; invalid values disable the save button until fixed.
 - Set `cron.webhookToken` to send a dedicated bearer token, if omitted the webhook is sent without an auth header.
 - Deprecated fallback: stored legacy jobs with `notify: true` can still use `cron.webhook` until migrated.
+
+## Session guard controls
+
+Open the **Sessions** panel in the Control UI to manage per-session write posture without leaving the browser.
+
+Each row now includes:
+
+- **Guard**: choose `watch`, `assist`, or `implement`
+- **Task**: required when `Guard` is `implement` and you want source-code edits to be allowed
+
+Mode behavior:
+
+- `watch`: blocks file writes
+- `assist`: allows note-taking paths such as workspace memory/research files and top-level Markdown, but blocks source edits
+- `implement`: allows source edits, but source-code writes are still checked against the session’s task scope
+
+Recommended workflow:
+
+1. Open the target session in **Sessions**
+2. Set **Guard** to `implement`
+3. Enter a short, explicit **Task** describing the allowed code change
+4. Return to **Chat** and run the work in that same session
+
+If you clear the guard mode back to default/inherit, OpenClaw removes any stored implement task for that session.
 
 ## Chat behavior
 

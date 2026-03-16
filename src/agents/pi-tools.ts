@@ -603,9 +603,12 @@ export function createOpenClawCodingTools(options?: {
   const withHooks = normalized.map((tool) =>
     wrapToolWithBeforeToolCallHook(tool, {
       agentId,
+      agentDir: options?.agentDir,
+      config: options?.config,
       sessionKey: options?.sessionKey,
       sessionId: options?.sessionId,
       runId: options?.runId,
+      workspaceDir: workspaceRoot,
       loopDetection: resolveToolLoopDetectionConfig({ cfg: options?.config, agentId }),
     }),
   );

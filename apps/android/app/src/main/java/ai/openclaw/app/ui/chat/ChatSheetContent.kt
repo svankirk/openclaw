@@ -16,6 +16,16 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,8 +33,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -61,6 +73,8 @@ fun ChatSheetContent(viewModel: MainViewModel) {
   val sessionKey by viewModel.chatSessionKey.collectAsState()
   val mainSessionKey by viewModel.mainSessionKey.collectAsState()
   val thinkingLevel by viewModel.chatThinkingLevel.collectAsState()
+  val guardMode by viewModel.chatGuardMode.collectAsState()
+  val guardTask by viewModel.chatGuardTask.collectAsState()
   val streamingAssistantText by viewModel.chatStreamingAssistantText.collectAsState()
   val pendingToolCalls by viewModel.chatPendingToolCalls.collectAsState()
   val sessions by viewModel.chatSessions.collectAsState()
@@ -73,6 +87,7 @@ fun ChatSheetContent(viewModel: MainViewModel) {
   val context = LocalContext.current
   val resolver = context.contentResolver
   val scope = rememberCoroutineScope()
+  var showSessionSettings by remember { mutableStateOf(false) }
 
   val attachments = remember { mutableStateListOf<PendingImageAttachment>() }
 
@@ -106,6 +121,7 @@ fun ChatSheetContent(viewModel: MainViewModel) {
       sessions = sessions,
       mainSessionKey = mainSessionKey,
       onSelectSession = { key -> viewModel.switchChatSession(key) },
+      onOpenSettings = { showSessionSettings = true },
     )
 
     if (!errorText.isNullOrBlank()) {
@@ -151,6 +167,19 @@ fun ChatSheetContent(viewModel: MainViewModel) {
       )
     }
   }
+
+  if (showSessionSettings) {
+    SessionGuardSettingsDialog(
+      sessionKey = sessionKey,
+      guardMode = guardMode,
+      guardTask = guardTask,
+      onDismiss = { showSessionSettings = false },
+      onSave = { nextMode, nextTask ->
+        viewModel.setChatGuardSettings(nextMode, nextTask)
+        showSessionSettings = false
+      },
+    )
+  }
 }
 
 @Composable
@@ -159,33 +188,169 @@ private fun ChatThreadSelector(
   sessions: List<ChatSessionEntry>,
   mainSessionKey: String,
   onSelectSession: (String) -> Unit,
+  onOpenSettings: () -> Unit,
 ) {
   val sessionOptions = resolveSessionChoices(sessionKey, sessions, mainSessionKey = mainSessionKey)
 
-  Row(
-    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
-  ) {
-    for (entry in sessionOptions) {
-      val active = entry.key == sessionKey
-      Surface(
-        onClick = { onSelectSession(entry.key) },
-        shape = RoundedCornerShape(14.dp),
-        color = if (active) mobileAccent else mobileCardSurface,
-        border = BorderStroke(1.dp, if (active) mobileAccentBorderStrong else mobileBorderStrong),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-      ) {
-        Text(
-          text = friendlySessionName(entry.displayName ?: entry.key),
-          style = mobileCaption1.copy(fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold),
-          color = if (active) Color.White else mobileText,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-          modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-        )
+  Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+    ) {
+      Text(
+        text = "SESSION",
+        style = mobileCaption1.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp),
+        color = mobileTextSecondary,
+      )
+      Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+        IconButton(onClick = onOpenSettings) {
+          Icon(
+            imageVector = Icons.Default.Settings,
+            contentDescription = "Session settings",
+            tint = mobileTextSecondary,
+          )
+        }
       }
     }
+
+    Row(
+      modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      for (entry in sessionOptions) {
+        val active = entry.key == sessionKey
+        Surface(
+          onClick = { onSelectSession(entry.key) },
+          shape = RoundedCornerShape(14.dp),
+          color = if (active) mobileAccent else mobileCardSurface,
+          border = BorderStroke(1.dp, if (active) mobileAccentBorderStrong else mobileBorderStrong),
+          tonalElevation = 0.dp,
+          shadowElevation = 0.dp,
+        ) {
+          Text(
+            text = friendlySessionName(entry.displayName ?: entry.key),
+            style = mobileCaption1.copy(fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold),
+            color = if (active) Color.White else mobileText,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+          )
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun SessionGuardSettingsDialog(
+  sessionKey: String,
+  guardMode: String?,
+  guardTask: String?,
+  onDismiss: () -> Unit,
+  onSave: (String?, String?) -> Unit,
+) {
+  var selectedMode by remember(sessionKey, guardMode) { mutableStateOf(guardMode.orEmpty()) }
+  var taskText by remember(sessionKey, guardTask) { mutableStateOf(guardTask.orEmpty()) }
+  var showModeMenu by remember { mutableStateOf(false) }
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text(text = "Session Guard", color = mobileText) },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+          text = "Control whether this session can write files and when source edits require an explicit task.",
+          style = mobileCallout,
+          color = mobileTextSecondary,
+        )
+        Box(modifier = Modifier.fillMaxWidth()) {
+          Surface(
+            onClick = { showModeMenu = true },
+            shape = RoundedCornerShape(12.dp),
+            color = Color.White,
+            border = BorderStroke(1.dp, mobileBorderStrong),
+          ) {
+            Row(
+              modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+              Text(
+                text = when (selectedMode) {
+                  "watch" -> "Watch"
+                  "assist" -> "Assist"
+                  "implement" -> "Implement"
+                  else -> "Default"
+                },
+                style = mobileCallout.copy(fontWeight = FontWeight.SemiBold),
+                color = mobileText,
+              )
+              Icon(Icons.Default.ArrowDropDown, contentDescription = "Select guard mode", tint = mobileTextSecondary)
+            }
+          }
+          DropdownMenu(expanded = showModeMenu, onDismissRequest = { showModeMenu = false }) {
+            listOf("" to "Default", "watch" to "Watch", "assist" to "Assist", "implement" to "Implement").forEach { (value, label) ->
+              DropdownMenuItem(
+                text = { Text(label) },
+                onClick = {
+                  selectedMode = value
+                  if (value != "implement") {
+                    taskText = ""
+                  }
+                  showModeMenu = false
+                },
+              )
+            }
+          }
+        }
+        OutlinedTextField(
+          value = taskText,
+          onValueChange = { taskText = it },
+          modifier = Modifier.fillMaxWidth(),
+          enabled = selectedMode == "implement",
+          minLines = 2,
+          maxLines = 4,
+          label = { Text("Implement task") },
+          placeholder = { Text(if (selectedMode == "implement") "Example: fix latency display in operator-overview.ts" else "Enabled only for Implement mode") },
+          colors =
+            OutlinedTextFieldDefaults.colors(
+              focusedBorderColor = mobileAccent,
+              unfocusedBorderColor = mobileBorderStrong,
+              focusedLabelColor = mobileAccent,
+              unfocusedLabelColor = mobileTextSecondary,
+            ),
+        )
+      }
+    },
+    confirmButton = {
+      androidx.compose.material3.TextButton(
+        onClick = { onSave(selectedMode.ifEmpty { null }, taskText.ifBlank { null }) },
+      ) {
+        Text("Save")
+      }
+    },
+    dismissButton = {
+      androidx.compose.material3.TextButton(onClick = onDismiss) {
+        Text("Cancel")
+      }
+    },
+  )
+}
+
+@Composable
+private fun ChatConnectionPill(healthOk: Boolean) {
+  Surface(
+    shape = RoundedCornerShape(999.dp),
+    color = if (healthOk) mobileSuccessSoft else mobileWarningSoft,
+    border = BorderStroke(1.dp, if (healthOk) mobileSuccess.copy(alpha = 0.35f) else mobileWarning.copy(alpha = 0.35f)),
+  ) {
+    Text(
+      text = if (healthOk) "Connected" else "Offline",
+      style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold),
+      color = if (healthOk) mobileSuccess else mobileWarning,
+      modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+    )
   }
 }
 

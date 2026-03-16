@@ -111,4 +111,54 @@ describe("sessions view", () => {
     const fast = selects[1] as HTMLSelectElement | undefined;
     expect(fast?.value).toBe("on");
   });
+
+  it("renders implement guard mode with an editable task", async () => {
+    const container = document.createElement("div");
+    render(
+      renderSessions(
+        buildProps(
+          buildResult({
+            key: "agent:main:main",
+            kind: "direct",
+            updatedAt: Date.now(),
+            guardMode: "implement",
+            guardTask: "fix latency display in operator-overview.ts",
+          }),
+        ),
+      ),
+      container,
+    );
+    await Promise.resolve();
+
+    const selects = container.querySelectorAll("tbody select");
+    const guardMode = selects[4] as HTMLSelectElement | undefined;
+    const inputs = container.querySelectorAll("tbody input");
+    const guardTask = inputs[1] as HTMLInputElement | undefined;
+    expect(guardMode?.value).toBe("implement");
+    expect(guardTask?.value).toBe("fix latency display in operator-overview.ts");
+    expect(guardTask?.disabled).toBe(false);
+  });
+
+  it("disables guard task editing outside implement mode", async () => {
+    const container = document.createElement("div");
+    render(
+      renderSessions(
+        buildProps(
+          buildResult({
+            key: "agent:main:main",
+            kind: "direct",
+            updatedAt: Date.now(),
+            guardMode: "assist",
+          }),
+        ),
+      ),
+      container,
+    );
+    await Promise.resolve();
+
+    const inputs = container.querySelectorAll("tbody input");
+    const guardTask = inputs[1] as HTMLInputElement | undefined;
+    expect(guardTask?.disabled).toBe(true);
+    expect(guardTask?.placeholder).toBe("Implement only");
+  });
 });

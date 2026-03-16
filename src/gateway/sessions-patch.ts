@@ -25,6 +25,7 @@ import {
   normalizeAgentId,
   parseAgentSessionKey,
 } from "../routing/session-key.js";
+import { normalizeGuardMode } from "../sessions/guard-mode.js";
 import { applyVerboseOverride, parseVerboseOverride } from "../sessions/level-overrides.js";
 import { applyModelOverrideToSessionEntry } from "../sessions/model-overrides.js";
 import { normalizeSendPolicy } from "../sessions/send-policy.js";
@@ -304,6 +305,40 @@ export async function applySessionsPatchToStore(params: {
       } else {
         next.responseUsage = normalized;
       }
+    }
+  }
+
+  if ("guardMode" in patch) {
+    const raw = patch.guardMode;
+    if (raw === null) {
+      delete next.guardMode;
+      delete next.guardTask;
+    } else if (raw !== undefined) {
+      const normalized = normalizeGuardMode(raw);
+      if (!normalized) {
+        return invalid('invalid guardMode (use "watch", "assist", or "implement")');
+      }
+      next.guardMode = normalized;
+      if (normalized !== "implement") {
+        delete next.guardTask;
+      }
+    }
+  }
+
+  if ("guardTask" in patch) {
+    const raw = patch.guardTask;
+    if (raw === null) {
+      delete next.guardTask;
+    } else if (raw !== undefined) {
+      const trimmed = String(raw).trim();
+      if (!trimmed) {
+        return invalid("invalid guardTask: empty");
+      }
+      const effectiveMode = next.guardMode ?? existing?.guardMode;
+      if (effectiveMode !== "implement") {
+        return invalid("guardTask can only be set when guardMode is implement");
+      }
+      next.guardTask = trimmed;
     }
   }
 

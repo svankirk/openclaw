@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { deleteSession, deleteSessionAndRefresh, type SessionsState } from "./sessions.ts";
+import {
+  deleteSession,
+  deleteSessionAndRefresh,
+  patchSession,
+  type SessionsState,
+} from "./sessions.ts";
 
 type RequestFn = (method: string, params?: unknown) => Promise<unknown>;
 
@@ -100,5 +105,35 @@ describe("deleteSession", () => {
 
     expect(deleted).toBe(false);
     expect(request).not.toHaveBeenCalled();
+  });
+});
+
+describe("patchSession", () => {
+  it("sends guardMode and guardTask patches to sessions.patch", async () => {
+    const request = vi.fn(async (method: string) => {
+      if (method === "sessions.patch") {
+        return { ok: true };
+      }
+      if (method === "sessions.list") {
+        return undefined;
+      }
+      throw new Error(`unexpected method: ${method}`);
+    });
+    const state = createState(request);
+
+    await patchSession(state, "agent:main:main", {
+      guardMode: "implement",
+      guardTask: "fix latency display in operator-overview.ts",
+    });
+
+    expect(request).toHaveBeenNthCalledWith(1, "sessions.patch", {
+      key: "agent:main:main",
+      guardMode: "implement",
+      guardTask: "fix latency display in operator-overview.ts",
+    });
+    expect(request).toHaveBeenNthCalledWith(2, "sessions.list", {
+      includeGlobal: true,
+      includeUnknown: true,
+    });
   });
 });

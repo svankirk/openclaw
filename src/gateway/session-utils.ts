@@ -958,6 +958,8 @@ export function listSessionsFromStore(params: {
         verboseLevel: entry?.verboseLevel,
         reasoningLevel: entry?.reasoningLevel,
         elevatedLevel: entry?.elevatedLevel,
+        guardMode: entry?.guardMode,
+        guardTask: entry?.guardTask,
         sendPolicy: entry?.sendPolicy,
         inputTokens: entry?.inputTokens,
         outputTokens: entry?.outputTokens,

@@ -40,6 +40,8 @@ export type SessionsProps = {
       fastMode?: boolean | null;
       verboseLevel?: string | null;
       reasoningLevel?: string | null;
+      guardMode?: "watch" | "assist" | "implement" | null;
+      guardTask?: string | null;
     },
   ) => void;
   onDelete: (key: string) => void;
@@ -59,6 +61,7 @@ const FAST_LEVELS = [
   { value: "off", label: "off" },
 ] as const;
 const REASONING_LEVELS = ["", "off", "on", "stream"] as const;
+const GUARD_MODES = ["", "watch", "assist", "implement"] as const;
 const PAGE_SIZES = [10, 25, 50, 100] as const;
 
 function normalizeProviderId(provider?: string | null): string {
@@ -218,6 +221,17 @@ export function renderSessions(props: SessionsProps) {
         <div>
           <div class="card-title">Sessions</div>
           <div class="card-sub">${props.result ? `Store: ${props.result.path}` : "Active session keys and per-session overrides."}</div>
+          <div class="card-sub">
+            Guard mode controls file-write posture: watch blocks writes, assist allows notes/docs, implement enables scoped source edits with a task.
+            <a
+              href="https://docs.openclaw.ai/concepts/session#guard-mode-optional"
+              target="_blank"
+              rel="noopener noreferrer"
+              style="margin-left: 6px;"
+            >
+              Docs
+            </a>
+          </div>
         </div>
         <button class="btn" ?disabled=${props.loading} @click=${props.onRefresh}>
           ${props.loading ? "Loading…" : "Refresh"}
@@ -315,6 +329,8 @@ export function renderSessions(props: SessionsProps) {
                 <th>Fast</th>
                 <th>Verbose</th>
                 <th>Reasoning</th>
+                <th>Guard</th>
+                <th>Task</th>
                 <th style="width: 60px;"></th>
               </tr>
             </thead>
@@ -323,7 +339,7 @@ export function renderSessions(props: SessionsProps) {
                 paginated.length === 0
                   ? html`
                       <tr>
-                        <td colspan="10" style="text-align: center; padding: 48px 16px; color: var(--muted)">
+                        <td colspan="12" style="text-align: center; padding: 48px 16px; color: var(--muted)">
                           No sessions found.
                         </td>
                       </tr>
@@ -403,6 +419,10 @@ function renderRow(
   const verboseLevels = withCurrentLabeledOption(VERBOSE_LEVELS, verbose);
   const reasoning = row.reasoningLevel ?? "";
   const reasoningLevels = withCurrentOption(REASONING_LEVELS, reasoning);
+  const guardMode = row.guardMode ?? "";
+  const guardModes = withCurrentOption(GUARD_MODES, guardMode);
+  const guardTask = row.guardTask ?? "";
+  const guardTaskEnabled = guardMode === "implement";
   const displayName =
     typeof row.displayName === "string" && row.displayName.trim().length > 0
       ? row.displayName.trim()
@@ -524,6 +544,42 @@ function renderRow(
               </option>`,
           )}
         </select>
+      </td>
+      <td>
+        <select
+          ?disabled=${disabled}
+          style="padding: 6px 10px; font-size: 13px; border: 1px solid var(--border); border-radius: var(--radius-sm); min-width: 100px;"
+          @change=${(e: Event) => {
+            const value = (e.target as HTMLSelectElement).value as
+              | ""
+              | "watch"
+              | "assist"
+              | "implement";
+            onPatch(row.key, {
+              guardMode: value || null,
+              guardTask: value === "implement" ? guardTask || undefined : null,
+            });
+          }}
+        >
+          ${guardModes.map(
+            (level) =>
+              html`<option value=${level} ?selected=${guardMode === level}>
+                ${level || "inherit"}
+              </option>`,
+          )}
+        </select>
+      </td>
+      <td>
+        <input
+          .value=${guardTask}
+          ?disabled=${disabled || !guardTaskEnabled}
+          placeholder=${guardTaskEnabled ? "Implement task scope" : "Implement only"}
+          style="width: 100%; min-width: 220px; padding: 6px 10px; font-size: 13px; border: 1px solid var(--border); border-radius: var(--radius-sm);"
+          @change=${(e: Event) => {
+            const value = (e.target as HTMLInputElement).value.trim();
+            onPatch(row.key, { guardTask: value || null });
+          }}
+        />
       </td>
       <td>
         <div class="data-table-row-actions">

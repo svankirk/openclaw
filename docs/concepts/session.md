@@ -218,6 +218,31 @@ the workspace is writable. See [Memory](/concepts/memory) and
 
 ## Send policy (optional)
 
+## Guard mode (optional)
+
+Sessions can also carry a **guard mode** that constrains file-writing behavior for that specific conversation.
+
+Available modes:
+
+- `watch`: read-only posture; file writes are blocked
+- `assist`: allows workspace notes/docs paths, but blocks source-code edits
+- `implement`: allows source-code edits only when the session also carries a matching **guard task**
+
+`guardTask` is a short description of the work the session is allowed to implement. In implement mode, OpenClaw uses that task to decide whether attempted source-code writes are in scope.
+
+### GUI-first setup
+
+You do not need the CLI to use this.
+
+- **Control UI**: open **Sessions**, set the row’s **Guard** mode, and fill in **Task** when using `implement`
+- **Android app**: open **Chat**, tap the session settings button, and set the session guard there
+
+Recommended usage:
+
+- Use `watch` for monitoring or operator dashboards
+- Use `assist` for research, planning, and note capture
+- Use `implement` only when you want the session to make scoped code changes, and always provide a specific task
+
 Block delivery for specific session types without listing individual ids.
 
 ```json5

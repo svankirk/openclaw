@@ -253,6 +253,7 @@
 - Signal: "update fly" => `fly ssh console -a flawd-bot -C "bash -lc 'cd /data/clawd/openclaw && git pull --rebase origin main'"` then `fly machines restart e825232f34d058 -a flawd-bot`.
 - When working on a GitHub Issue or PR, print the full URL at the end of the task.
 - When answering questions, respond with high-confidence answers only: verify in code; do not guess.
+- Cross-assistant coordination for `openclaw-hacks/projects/agent-dude` uses the shared mailbox at `/home/scott/dev/openclaw-hacks/projects/agent-dude/assistant-bridge/mailbox/`. Read `/home/scott/dev/openclaw-hacks/projects/agent-dude/assistant-bridge/MAILBOX_PROTOCOL.md` before writing messages there; active Claude/Codex messages live in `outbox/`, resolved threads move to `archive/`.
 - Never update the Carbon dependency.
 - Any dependency with `pnpm.patchedDependencies` must use an exact version (no `^`/`~`).
 - Patching dependencies (pnpm patches, overrides, or vendored changes) requires explicit approval; do not do this by default.
