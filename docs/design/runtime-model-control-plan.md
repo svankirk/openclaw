@@ -46,11 +46,13 @@ This is the runtime primitive needed for switching `agents.defaults.model.primar
 
 ### Phase 3: runtime default model API
 
-Recommended next upstream step.
+Implemented in this branch as the first semantic gateway surface.
 
-- add a dedicated `models.default.set` or equivalent higher-level method
+- add `models.default.get`
+- add `models.default.set`
+- add `models.default.reset`
 - use the runtime override layer internally instead of exposing config-path knowledge to all clients
-- optionally support per-agent scope:
+- support:
   - global default
   - agent default
 

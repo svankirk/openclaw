@@ -173,6 +173,42 @@ export const ModelsListResultSchema = Type.Object(
   { additionalProperties: false },
 );
 
+export const ModelsDefaultGetParamsSchema = Type.Object(
+  {
+    agentId: Type.Optional(NonEmptyString),
+  },
+  { additionalProperties: false },
+);
+
+export const ModelsDefaultSetParamsSchema = Type.Object(
+  {
+    model: NonEmptyString,
+    agentId: Type.Optional(NonEmptyString),
+  },
+  { additionalProperties: false },
+);
+
+export const ModelsDefaultResetParamsSchema = Type.Object(
+  {
+    agentId: Type.Optional(NonEmptyString),
+  },
+  { additionalProperties: false },
+);
+
+export const ModelsDefaultResultSchema = Type.Object(
+  {
+    ok: Type.Literal(true),
+    scope: Type.Union([Type.Literal("global"), Type.Literal("agent")]),
+    agentId: Type.Optional(NonEmptyString),
+    source: Type.Union([Type.Literal("config"), Type.Literal("runtimeOverride")]),
+    provider: NonEmptyString,
+    model: NonEmptyString,
+    ref: NonEmptyString,
+    allowlistUpdated: Type.Optional(Type.Boolean()),
+  },
+  { additionalProperties: false },
+);
+
 export const SkillsStatusParamsSchema = Type.Object(
   {
     agentId: Type.Optional(NonEmptyString),

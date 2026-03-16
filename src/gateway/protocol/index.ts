@@ -143,6 +143,14 @@ import {
   LogsTailParamsSchema,
   type LogsTailResult,
   LogsTailResultSchema,
+  type ModelsDefaultGetParams,
+  ModelsDefaultGetParamsSchema,
+  type ModelsDefaultResetParams,
+  ModelsDefaultResetParamsSchema,
+  type ModelsDefaultResult,
+  ModelsDefaultResultSchema,
+  type ModelsDefaultSetParams,
+  ModelsDefaultSetParamsSchema,
   type ModelsListParams,
   ModelsListParamsSchema,
   type NodeDescribeParams,
@@ -382,6 +390,17 @@ export const validateChannelsLogoutParams = ajv.compile<ChannelsLogoutParams>(
   ChannelsLogoutParamsSchema,
 );
 export const validateModelsListParams = ajv.compile<ModelsListParams>(ModelsListParamsSchema);
+export const validateModelsDefaultGetParams = ajv.compile<ModelsDefaultGetParams>(
+  ModelsDefaultGetParamsSchema,
+);
+export const validateModelsDefaultSetParams = ajv.compile<ModelsDefaultSetParams>(
+  ModelsDefaultSetParamsSchema,
+);
+export const validateModelsDefaultResetParams = ajv.compile<ModelsDefaultResetParams>(
+  ModelsDefaultResetParamsSchema,
+);
+export const validateModelsDefaultResult =
+  ajv.compile<ModelsDefaultResult>(ModelsDefaultResultSchema);
 export const validateSkillsStatusParams = ajv.compile<SkillsStatusParams>(SkillsStatusParamsSchema);
 export const validateToolsCatalogParams = ajv.compile<ToolsCatalogParams>(ToolsCatalogParamsSchema);
 export const validateSkillsBinsParams = ajv.compile<SkillsBinsParams>(SkillsBinsParamsSchema);

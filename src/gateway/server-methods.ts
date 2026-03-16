@@ -41,6 +41,8 @@ const CONTROL_PLANE_WRITE_METHODS = new Set([
   "config.overrides.set",
   "config.overrides.unset",
   "config.overrides.reset",
+  "models.default.set",
+  "models.default.reset",
   "update.run",
 ]);
 function authorizeGatewayMethod(method: string, client: GatewayRequestOptions["client"]) {
