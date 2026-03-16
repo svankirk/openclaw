@@ -14,6 +14,7 @@ export type ModelCatalogEntry = {
   contextWindow?: number;
   reasoning?: boolean;
   input?: ModelInputType[];
+  source?: "registry" | "configured" | "plugin";
 };
 
 type DiscoveredModel = {
@@ -99,7 +100,7 @@ function readConfiguredOptInProviderModels(config: OpenClawConfig): ModelCatalog
       const reasoningRaw = (configuredModel as { reasoning?: unknown }).reasoning;
       const reasoning = typeof reasoningRaw === "boolean" ? reasoningRaw : undefined;
       const input = normalizeConfiguredModelInput((configuredModel as { input?: unknown }).input);
-      out.push({ id, name, provider, contextWindow, reasoning, input });
+      out.push({ id, name, provider, contextWindow, reasoning, input, source: "configured" });
     }
   }
 
@@ -206,7 +207,7 @@ export async function loadModelCatalog(params?: {
             : undefined;
         const reasoning = typeof entry?.reasoning === "boolean" ? entry.reasoning : undefined;
         const input = Array.isArray(entry?.input) ? entry.input : undefined;
-        models.push({ id, name, provider, contextWindow, reasoning, input });
+        models.push({ id, name, provider, contextWindow, reasoning, input, source: "registry" });
       }
       mergeConfiguredOptInProviderModels({ config: cfg, models });
       const supplemental = await augmentModelCatalogWithProviderPlugins({
@@ -230,7 +231,7 @@ export async function loadModelCatalog(params?: {
           if (seen.has(key)) {
             continue;
           }
-          models.push(entry);
+          models.push({ ...entry, source: entry.source ?? "plugin" });
           seen.add(key);
         }
       }

@@ -12,6 +12,25 @@ export const ModelChoiceSchema = Type.Object(
   { additionalProperties: false },
 );
 
+export const ModelCatalogDiscoverEntrySchema = Type.Object(
+  {
+    id: NonEmptyString,
+    name: NonEmptyString,
+    provider: NonEmptyString,
+    contextWindow: Type.Optional(Type.Integer({ minimum: 1 })),
+    reasoning: Type.Optional(Type.Boolean()),
+    input: Type.Optional(
+      Type.Array(
+        Type.Union([Type.Literal("text"), Type.Literal("image"), Type.Literal("document")]),
+      ),
+    ),
+    source: Type.Optional(
+      Type.Union([Type.Literal("registry"), Type.Literal("configured"), Type.Literal("plugin")]),
+    ),
+  },
+  { additionalProperties: false },
+);
+
 export const AgentSummarySchema = Type.Object(
   {
     id: NonEmptyString,
@@ -169,6 +188,20 @@ export const ModelsListParamsSchema = Type.Object({}, { additionalProperties: fa
 export const ModelsListResultSchema = Type.Object(
   {
     models: Type.Array(ModelChoiceSchema),
+  },
+  { additionalProperties: false },
+);
+
+export const ModelsDiscoverParamsSchema = Type.Object(
+  {
+    refresh: Type.Optional(Type.Boolean()),
+  },
+  { additionalProperties: false },
+);
+
+export const ModelsDiscoverResultSchema = Type.Object(
+  {
+    models: Type.Array(ModelCatalogDiscoverEntrySchema),
   },
   { additionalProperties: false },
 );

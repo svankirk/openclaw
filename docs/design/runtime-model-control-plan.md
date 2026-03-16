@@ -60,9 +60,23 @@ This keeps model switching semantic and stable even if config layout changes aga
 
 ### Phase 4: provider discovery contract
 
-Recommended upstream design work.
+Implemented in this branch as a first gateway surface over the existing catalog pipeline.
 
-- add a provider/plugin contract for live model discovery
+- add `models.discover { refresh? }`
+- return the full normalized live catalog with:
+  - provider
+  - id
+  - display name
+  - context window
+  - reasoning hint
+  - input modalities
+  - provenance/source
+- keep `models.list` as the filtered selection surface
+- continue to use the provider/plugin discovery and augmentation hooks underneath
+
+Recommended follow-up upstream design work:
+
+- tighten the provider/plugin contract for live model discovery
 - normalize basic fields:
   - `provider`
   - `id`

@@ -14,6 +14,11 @@ export function __resetModelCatalogCacheForTest() {
   resetModelCatalogCacheForTest();
 }
 
-export async function loadGatewayModelCatalog(): Promise<GatewayModelChoice[]> {
-  return await loadModelCatalog({ config: loadConfig() });
+export async function loadGatewayModelCatalog(params?: {
+  refresh?: boolean;
+}): Promise<GatewayModelChoice[]> {
+  return await loadModelCatalog({
+    config: loadConfig(),
+    ...(params?.refresh ? { useCache: false } : {}),
+  });
 }

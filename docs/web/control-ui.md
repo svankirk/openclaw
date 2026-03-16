@@ -75,7 +75,7 @@ The Control UI can localize itself on first load based on your browser locale, a
 - Stream tool calls + live tool output cards in Chat (agent events)
 - Channels: WhatsApp/Telegram/Discord/Slack + plugin channels (Mattermost, etc.) status + QR login + per-channel config (`channels.status`, `web.login.*`, `config.patch`)
 - Instances: presence list + refresh (`system-presence`)
-- Models: list the current catalog and hot-swap global or per-agent defaults without a restart (`models.list`, `models.default.*`)
+- Models: list the current catalog, inspect live discovery output, and hot-swap global or per-agent defaults without a restart (`models.list`, `models.discover`, `models.default.*`)
 - Sessions: list + effective model source/policy visibility, per-session thinking/fast/verbose/reasoning overrides, and guard mode/task controls (`sessions.list`, `sessions.patch`)
 - Cron jobs: list/add/edit/run/enable/disable + run history (`cron.*`)
 - Skills: status, enable/disable, install, API key updates (`skills.*`)

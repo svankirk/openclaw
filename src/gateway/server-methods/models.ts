@@ -22,6 +22,7 @@ import {
   ErrorCodes,
   errorShape,
   formatValidationErrors,
+  validateModelsDiscoverParams,
   validateModelsDefaultGetParams,
   validateModelsDefaultResetParams,
   validateModelsDefaultSetParams,
@@ -239,6 +240,27 @@ export const modelsHandlers: GatewayRequestHandlers = {
       });
       const models = allowedCatalog.length > 0 ? allowedCatalog : catalog;
       respond(true, { models }, undefined);
+    } catch (err) {
+      respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, String(err)));
+    }
+  },
+  "models.discover": async ({ params, respond, context }) => {
+    if (!validateModelsDiscoverParams(params)) {
+      respond(
+        false,
+        undefined,
+        errorShape(
+          ErrorCodes.INVALID_REQUEST,
+          `invalid models.discover params: ${formatValidationErrors(validateModelsDiscoverParams.errors)}`,
+        ),
+      );
+      return;
+    }
+    try {
+      const catalog = await context.loadGatewayModelCatalog({
+        refresh: params.refresh === true,
+      });
+      respond(true, { models: catalog }, undefined);
     } catch (err) {
       respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, String(err)));
     }

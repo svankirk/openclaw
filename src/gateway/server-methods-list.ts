@@ -40,6 +40,7 @@ const BASE_METHODS = [
   "talk.config",
   "talk.mode",
   "models.list",
+  "models.discover",
   "models.default.get",
   "models.default.set",
   "models.default.reset",

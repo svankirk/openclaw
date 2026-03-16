@@ -120,6 +120,7 @@ Gateway operators can also switch the running default model without editing disk
 - `models.default.get`: read the effective default model
 - `models.default.set`: hot-swap the global or per-agent default model
 - `models.default.reset`: drop the runtime override and fall back to config
+- `models.discover`: inspect the full live catalog with provider/discovery provenance
 
 These methods use runtime overrides under the hood, so new work can follow the new default immediately while the on-disk config stays unchanged.
 

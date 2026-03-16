@@ -90,6 +90,8 @@ type ModelCatalogRpcEntry = {
   name: string;
   provider: string;
   contextWindow?: number;
+  input?: Array<"text" | "image" | "document">;
+  source?: "registry" | "configured" | "plugin";
 };
 
 type PiCatalogFixtureEntry = {
@@ -127,28 +129,34 @@ const expectedSortedCatalog = (): ModelCatalogRpcEntry[] => [
     name: "A-Model",
     provider: "anthropic",
     contextWindow: 200_000,
+    source: "registry",
   },
   {
     id: "claude-test-b",
     name: "B-Model",
     provider: "anthropic",
     contextWindow: 1000,
+    source: "registry",
   },
   {
     id: "gpt-test-a",
     name: "A-Model",
     provider: "openai",
     contextWindow: 8000,
+    source: "registry",
   },
   {
     id: "gpt-test-z",
     name: "gpt-test-z",
     provider: "openai",
+    source: "registry",
   },
 ];
 
 describe("gateway server models + voicewake", () => {
   const listModels = async () => rpcReq<{ models: ModelCatalogRpcEntry[] }>(ws, "models.list");
+  const discoverModels = async (params?: { refresh?: boolean }) =>
+    rpcReq<{ models: ModelCatalogRpcEntry[] }>(ws, "models.discover", params ?? {});
 
   const seedPiCatalog = () => {
     piSdkMock.enabled = true;
@@ -319,6 +327,46 @@ describe("gateway server models + voicewake", () => {
     expect(piSdkMock.discoverCalls).toBe(1);
   });
 
+  test("models.discover returns the full live catalog with provenance and supports refresh", async () => {
+    seedPiCatalog();
+
+    const res1 = await discoverModels();
+    const res2 = await discoverModels({ refresh: true });
+
+    expect(res1.ok).toBe(true);
+    expect(res2.ok).toBe(true);
+    expect(res1.payload?.models).toEqual([
+      {
+        id: "claude-test-a",
+        name: "A-Model",
+        provider: "anthropic",
+        contextWindow: 200_000,
+        source: "registry",
+      },
+      {
+        id: "claude-test-b",
+        name: "B-Model",
+        provider: "anthropic",
+        contextWindow: 1000,
+        source: "registry",
+      },
+      {
+        id: "gpt-test-a",
+        name: "A-Model",
+        provider: "openai",
+        contextWindow: 8000,
+        source: "registry",
+      },
+      {
+        id: "gpt-test-z",
+        name: "gpt-test-z",
+        provider: "openai",
+        source: "registry",
+      },
+    ]);
+    expect(piSdkMock.discoverCalls).toBe(2);
+  });
+
   test("models.list filters to allowlisted configured models by default", async () => {
     await expectAllowlistedModels({
       primary: "openai/gpt-test-z",
@@ -332,11 +380,13 @@ describe("gateway server models + voicewake", () => {
           name: "A-Model",
           provider: "anthropic",
           contextWindow: 200_000,
+          source: "registry",
         },
         {
           id: "gpt-test-z",
           name: "gpt-test-z",
           provider: "openai",
+          source: "registry",
         },
       ],
     });
@@ -365,6 +415,15 @@ describe("gateway server models + voicewake", () => {
     const res = await rpcReq(ws, "models.list", { extra: true });
     expect(res.ok).toBe(false);
     expect(res.error?.message ?? "").toMatch(/invalid models\.list params/i);
+  });
+
+  test("models.discover rejects unknown params", async () => {
+    piSdkMock.enabled = true;
+    piSdkMock.models = [{ id: "gpt-test-a", name: "A", provider: "openai" }];
+
+    const res = await rpcReq(ws, "models.discover", { extra: true });
+    expect(res.ok).toBe(false);
+    expect(res.error?.message ?? "").toMatch(/invalid models\.discover params/i);
   });
 });
 

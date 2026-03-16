@@ -26,7 +26,7 @@ export type NodeEventContext = {
   agentRunSeq: Map<string, number>;
   getHealthCache: () => HealthSummary | null;
   refreshHealthSnapshot: (opts?: { probe?: boolean }) => Promise<HealthSummary>;
-  loadGatewayModelCatalog: () => Promise<ModelCatalogEntry[]>;
+  loadGatewayModelCatalog: (params?: { refresh?: boolean }) => Promise<ModelCatalogEntry[]>;
   logGateway: { warn: (msg: string) => void };
 };
 

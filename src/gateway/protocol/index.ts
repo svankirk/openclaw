@@ -151,6 +151,10 @@ import {
   ModelsDefaultResultSchema,
   type ModelsDefaultSetParams,
   ModelsDefaultSetParamsSchema,
+  type ModelsDiscoverParams,
+  ModelsDiscoverParamsSchema,
+  type ModelsDiscoverResult,
+  ModelsDiscoverResultSchema,
   type ModelsListParams,
   ModelsListParamsSchema,
   type NodeDescribeParams,
@@ -390,6 +394,12 @@ export const validateChannelsLogoutParams = ajv.compile<ChannelsLogoutParams>(
   ChannelsLogoutParamsSchema,
 );
 export const validateModelsListParams = ajv.compile<ModelsListParams>(ModelsListParamsSchema);
+export const validateModelsDiscoverParams = ajv.compile<ModelsDiscoverParams>(
+  ModelsDiscoverParamsSchema,
+);
+export const validateModelsDiscoverResult = ajv.compile<ModelsDiscoverResult>(
+  ModelsDiscoverResultSchema,
+);
 export const validateModelsDefaultGetParams = ajv.compile<ModelsDefaultGetParams>(
   ModelsDefaultGetParamsSchema,
 );
