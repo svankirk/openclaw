@@ -752,13 +752,33 @@ export function getSessionDefaults(cfg: OpenClawConfig): GatewaySessionsDefaults
   };
 }
 
-export function resolveSessionModelRef(
+export function resolveStoredSessionModelMode(
+  entry?: SessionEntry | Pick<SessionEntry, "modelMode" | "modelOverride" | "providerOverride">,
+): "inherit" | "pinned" {
+  if (entry?.modelMode === "inherit" || entry?.modelMode === "pinned") {
+    return entry.modelMode;
+  }
+  const storedModelOverride = entry?.modelOverride?.trim();
+  const storedProviderOverride = entry?.providerOverride?.trim();
+  return storedModelOverride || storedProviderOverride ? "pinned" : "inherit";
+}
+
+export function resolveSessionModelState(
   cfg: OpenClawConfig,
   entry?:
     | SessionEntry
-    | Pick<SessionEntry, "model" | "modelProvider" | "modelOverride" | "providerOverride">,
+    | Pick<
+        SessionEntry,
+        "model" | "modelMode" | "modelOverride" | "modelProvider" | "providerOverride"
+      >,
   agentId?: string,
-): { provider: string; model: string } {
+): {
+  mode: "inherit" | "pinned";
+  source: "runtime" | "pinned" | "default";
+  provider: string;
+  model: string;
+} {
+  const mode = resolveStoredSessionModelMode(entry);
   const resolved = agentId
     ? resolveDefaultModelForAgent({ cfg, agentId })
     : resolveConfiguredModelRef({
@@ -767,54 +787,67 @@ export function resolveSessionModelRef(
         defaultModel: DEFAULT_MODEL,
       });
 
-  // Prefer the last runtime model recorded on the session entry.
-  // This is the actual model used by the latest run and must win over defaults.
   let provider = resolved.provider;
   let model = resolved.model;
   const runtimeModel = entry?.model?.trim();
   const runtimeProvider = entry?.modelProvider?.trim();
   if (runtimeModel) {
     if (runtimeProvider) {
-      // Provider is explicitly recorded — use it directly. Re-parsing the
-      // model string through parseModelRef would incorrectly split OpenRouter
-      // vendor-prefixed model names (e.g. model="anthropic/claude-haiku-4.5"
-      // with provider="openrouter") into { provider: "anthropic" }, discarding
-      // the stored OpenRouter provider and causing direct API calls to a
-      // provider the user has no credentials for.
-      return { provider: runtimeProvider, model: runtimeModel };
+      return { mode, source: "runtime", provider: runtimeProvider, model: runtimeModel };
     }
     const parsedRuntime = parseModelRef(runtimeModel, provider || DEFAULT_PROVIDER);
     if (parsedRuntime) {
-      provider = parsedRuntime.provider;
-      model = parsedRuntime.model;
-    } else {
-      model = runtimeModel;
+      return {
+        mode,
+        source: "runtime",
+        provider: parsedRuntime.provider,
+        model: parsedRuntime.model,
+      };
     }
-    return { provider, model };
+    return { mode, source: "runtime", provider, model: runtimeModel };
   }
 
-  // Fall back to explicit per-session override (set at spawn/model-patch time),
-  // then finally to configured defaults.
-  const storedModelOverride = entry?.modelOverride?.trim();
-  if (storedModelOverride) {
-    const overrideProvider = entry?.providerOverride?.trim() || provider || DEFAULT_PROVIDER;
-    const parsedOverride = parseModelRef(storedModelOverride, overrideProvider);
-    if (parsedOverride) {
-      provider = parsedOverride.provider;
-      model = parsedOverride.model;
-    } else {
-      provider = overrideProvider;
-      model = storedModelOverride;
+  if (mode === "pinned") {
+    const storedModelOverride = entry?.modelOverride?.trim();
+    if (storedModelOverride) {
+      const overrideProvider = entry?.providerOverride?.trim() || provider || DEFAULT_PROVIDER;
+      const parsedOverride = parseModelRef(storedModelOverride, overrideProvider);
+      if (parsedOverride) {
+        provider = parsedOverride.provider;
+        model = parsedOverride.model;
+      } else {
+        provider = overrideProvider;
+        model = storedModelOverride;
+      }
+      return { mode, source: "pinned", provider, model };
     }
   }
-  return { provider, model };
+
+  return { mode, source: "default", provider, model };
+}
+
+export function resolveSessionModelRef(
+  cfg: OpenClawConfig,
+  entry?:
+    | SessionEntry
+    | Pick<
+        SessionEntry,
+        "model" | "modelMode" | "modelOverride" | "modelProvider" | "providerOverride"
+      >,
+  agentId?: string,
+): { provider: string; model: string } {
+  const resolved = resolveSessionModelState(cfg, entry, agentId);
+  return { provider: resolved.provider, model: resolved.model };
 }
 
 export function resolveSessionModelIdentityRef(
   cfg: OpenClawConfig,
   entry?:
     | SessionEntry
-    | Pick<SessionEntry, "model" | "modelProvider" | "modelOverride" | "providerOverride">,
+    | Pick<
+        SessionEntry,
+        "model" | "modelMode" | "modelOverride" | "modelProvider" | "providerOverride"
+      >,
   agentId?: string,
 ): { provider?: string; model: string } {
   const runtimeModel = entry?.model?.trim();
@@ -934,6 +967,7 @@ export function listSessionsFromStore(params: {
       const parsedAgent = parseAgentSessionKey(key);
       const sessionAgentId = normalizeAgentId(parsedAgent?.agentId ?? resolveDefaultAgentId(cfg));
       const resolvedModel = resolveSessionModelIdentityRef(cfg, entry, sessionAgentId);
+      const modelState = resolveSessionModelState(cfg, entry, sessionAgentId);
       const modelProvider = resolvedModel.provider;
       const model = resolvedModel.model ?? DEFAULT_MODEL;
       return {
@@ -966,6 +1000,8 @@ export function listSessionsFromStore(params: {
         totalTokens: total,
         totalTokensFresh,
         responseUsage: entry?.responseUsage,
+        modelMode: modelState.mode,
+        modelSource: modelState.source,
         modelProvider,
         model,
         contextTokens: entry?.contextTokens,

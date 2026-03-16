@@ -288,6 +288,8 @@ export type ConfigSnapshot = {
   parsed?: unknown;
   valid?: boolean | null;
   config?: Record<string, unknown> | null;
+  effectiveConfig?: Record<string, unknown> | null;
+  runtimeOverrides?: Record<string, unknown> | null;
   issues?: ConfigSnapshotIssue[] | null;
 };
 
@@ -391,6 +393,8 @@ export type GatewaySessionRow = {
   inputTokens?: number;
   outputTokens?: number;
   totalTokens?: number;
+  modelMode?: "inherit" | "pinned";
+  modelSource?: "runtime" | "pinned" | "default";
   model?: string;
   modelProvider?: string;
   contextTokens?: number;
@@ -408,8 +412,11 @@ export type SessionsPatchResult = SessionsPatchResultBase<{
   elevatedLevel?: string;
   guardMode?: "watch" | "assist" | "implement";
   guardTask?: string;
+  modelMode?: "inherit" | "pinned";
 }> & {
   resolved?: {
+    mode?: "inherit" | "pinned";
+    source?: "runtime" | "pinned" | "default";
     modelProvider?: string;
     model?: string;
   };

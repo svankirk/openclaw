@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   connectOk,
   installGatewayTestHooks,
@@ -39,6 +39,11 @@ afterAll(async () => {
   await fs.rm(sharedTempRoot, { recursive: true, force: true });
 });
 
+afterEach(async () => {
+  const { resetConfigOverrides } = await import("../config/config.js");
+  resetConfigOverrides();
+});
+
 async function resetTempDir(name: string): Promise<string> {
   const dir = path.join(sharedTempRoot, name);
   await fs.rm(dir, { recursive: true, force: true });
@@ -62,6 +67,98 @@ async function expectSchemaLookupInvalid(path: unknown) {
 }
 
 describe("gateway config methods", () => {
+  it("round-trips config.overrides.set/get/unset without touching disk config", async () => {
+    const setRes = await rpcReq<{ overrides?: Record<string, unknown> }>(
+      requireWs(),
+      "config.overrides.set",
+      {
+        path: "agents.defaults.model.primary",
+        value: "ollama/qwen3.5:9b",
+      },
+    );
+    expect(setRes.ok).toBe(true);
+    expect(setRes.payload?.overrides).toMatchObject({
+      agents: { defaults: { model: { primary: "ollama/qwen3.5:9b" } } },
+    });
+
+    const getRes = await rpcReq<{ overrides?: Record<string, unknown> }>(
+      requireWs(),
+      "config.overrides.get",
+      {},
+    );
+    expect(getRes.ok).toBe(true);
+    expect(getRes.payload?.overrides).toMatchObject({
+      agents: { defaults: { model: { primary: "ollama/qwen3.5:9b" } } },
+    });
+
+    const configRes = await rpcReq<{
+      config?: { agents?: { defaults?: { model?: { primary?: string } } } };
+      effectiveConfig?: { agents?: { defaults?: { model?: { primary?: string } } } };
+      runtimeOverrides?: Record<string, unknown>;
+    }>(requireWs(), "config.get", {});
+    expect(configRes.ok).toBe(true);
+    expect(configRes.payload?.config?.agents?.defaults?.model?.primary).not.toBe(
+      "ollama/qwen3.5:9b",
+    );
+    expect(configRes.payload?.effectiveConfig?.agents?.defaults?.model?.primary).toBe(
+      "ollama/qwen3.5:9b",
+    );
+    expect(configRes.payload?.runtimeOverrides).toMatchObject({
+      agents: { defaults: { model: { primary: "ollama/qwen3.5:9b" } } },
+    });
+
+    const unsetRes = await rpcReq<{ overrides?: Record<string, unknown> }>(
+      requireWs(),
+      "config.overrides.unset",
+      {
+        path: "agents.defaults.model.primary",
+      },
+    );
+    expect(unsetRes.ok).toBe(true);
+    expect(unsetRes.payload?.overrides ?? {}).not.toMatchObject({
+      agents: { defaults: { model: { primary: "ollama/qwen3.5:9b" } } },
+    });
+  });
+
+  it("resets config overrides without touching disk config", async () => {
+    const setRes = await rpcReq<{ overrides?: Record<string, unknown> }>(
+      requireWs(),
+      "config.overrides.set",
+      {
+        path: "agents.defaults.model.primary",
+        value: "openrouter/anthropic/claude-sonnet-4-6",
+      },
+    );
+    expect(setRes.ok).toBe(true);
+
+    const resetRes = await rpcReq<{ overrides?: Record<string, unknown> }>(
+      requireWs(),
+      "config.overrides.reset",
+      {},
+    );
+    expect(resetRes.ok).toBe(true);
+    expect(resetRes.payload?.overrides).toEqual({});
+
+    const configRes = await rpcReq<{
+      effectiveConfig?: { agents?: { defaults?: { model?: { primary?: string } } } };
+      runtimeOverrides?: Record<string, unknown>;
+    }>(requireWs(), "config.get", {});
+    expect(configRes.ok).toBe(true);
+    expect(configRes.payload?.runtimeOverrides).toEqual({});
+    expect(configRes.payload?.effectiveConfig?.agents?.defaults?.model?.primary).not.toBe(
+      "openrouter/anthropic/claude-sonnet-4-6",
+    );
+  });
+
+  it("rejects invalid config.overrides.set paths", async () => {
+    const res = await rpcReq(requireWs(), "config.overrides.set", {
+      path: "__proto__.polluted",
+      value: true,
+    });
+    expect(res.ok).toBe(false);
+    expect(res.error?.message ?? "").toContain("Invalid");
+  });
+
   it("round-trips config.set and returns the live config path", async () => {
     const { createConfigIO } = await import("../config/config.js");
     const current = await rpcReq<{

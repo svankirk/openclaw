@@ -36,6 +36,7 @@ import {
   errorShape,
   type SessionsPatchParams,
 } from "./protocol/index.js";
+import { resolveSessionModelRef, resolveStoredSessionModelMode } from "./session-utils.js";
 
 function invalid(message: string): { ok: false; error: ErrorShape } {
   return { ok: false, error: errorShape(ErrorCodes.INVALID_REQUEST, message) };
@@ -411,15 +412,22 @@ export async function applySessionsPatchToStore(params: {
   if ("model" in patch) {
     const raw = patch.model;
     if (raw === null) {
+      if (patch.modelMode === "pinned") {
+        return invalid('modelMode "pinned" cannot be combined with model=null');
+      }
       applyModelOverrideToSessionEntry({
         entry: next,
         selection: {
           provider: resolvedDefault.provider,
           model: resolvedDefault.model,
           isDefault: true,
+          mode: "inherit",
         },
       });
     } else if (raw !== undefined) {
+      if (patch.modelMode === "inherit") {
+        return invalid('modelMode "inherit" cannot be combined with an explicit model');
+      }
       const trimmed = String(raw).trim();
       if (!trimmed) {
         return invalid("invalid model: empty");
@@ -450,8 +458,45 @@ export async function applySessionsPatchToStore(params: {
           provider: resolved.ref.provider,
           model: resolved.ref.model,
           isDefault,
+          mode: patch.modelMode === "pinned" ? "pinned" : undefined,
         },
       });
+    }
+  }
+
+  if ("modelMode" in patch && !("model" in patch)) {
+    const raw = patch.modelMode;
+    if (raw === null) {
+      const inferred = resolveStoredSessionModelMode(next);
+      delete next.modelMode;
+      if (inferred === "inherit" && !next.modelOverride && !next.providerOverride) {
+        delete next.modelMode;
+      }
+    } else if (raw === "inherit") {
+      applyModelOverrideToSessionEntry({
+        entry: next,
+        selection: {
+          provider: resolvedDefault.provider,
+          model: resolvedDefault.model,
+          isDefault: true,
+          mode: "inherit",
+        },
+      });
+    } else if (raw === "pinned") {
+      const current = resolveSessionModelRef(cfg, existing ?? next, sessionAgentId);
+      applyModelOverrideToSessionEntry({
+        entry: next,
+        selection: {
+          provider: current.provider,
+          model: current.model,
+          isDefault:
+            current.provider === resolvedDefault.provider &&
+            current.model === resolvedDefault.model,
+          mode: "pinned",
+        },
+      });
+    } else {
+      return invalid('invalid modelMode (use "inherit"|"pinned")');
     }
   }
 

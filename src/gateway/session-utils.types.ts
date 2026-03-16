@@ -44,6 +44,8 @@ export type GatewaySessionRow = {
   totalTokens?: number;
   totalTokensFresh?: boolean;
   responseUsage?: "on" | "off" | "tokens" | "full";
+  modelMode?: "inherit" | "pinned";
+  modelSource?: "runtime" | "pinned" | "default";
   modelProvider?: string;
   model?: string;
   contextTokens?: number;
@@ -76,6 +78,8 @@ export type SessionsListResult = SessionsListResultBase<GatewaySessionsDefaults,
 export type SessionsPatchResult = SessionsPatchResultBase<SessionEntry> & {
   entry: SessionEntry;
   resolved?: {
+    mode?: "inherit" | "pinned";
+    source?: "runtime" | "pinned" | "default";
     modelProvider?: string;
     model?: string;
   };

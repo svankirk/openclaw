@@ -1,11 +1,26 @@
 import { isPlainObject } from "../utils.js";
 import { parseConfigPath, setConfigValueAtPath, unsetConfigValueAtPath } from "./config-paths.js";
+import {
+  clearConfigCache,
+  getRuntimeConfigSnapshot,
+  getRuntimeConfigSourceSnapshot,
+  setRuntimeConfigSnapshot,
+} from "./io.js";
 import { isBlockedObjectKey } from "./prototype-keys.js";
 import type { OpenClawConfig } from "./types.js";
 
 type OverrideTree = Record<string, unknown>;
 
 let overrides: OverrideTree = {};
+
+function refreshRuntimeOverrideSnapshot(): void {
+  const runtimeSnapshot = getRuntimeConfigSnapshot();
+  if (!runtimeSnapshot) {
+    return;
+  }
+  const runtimeSource = getRuntimeConfigSourceSnapshot() ?? runtimeSnapshot;
+  setRuntimeConfigSnapshot(applyConfigOverrides(runtimeSource), runtimeSource);
+}
 
 function sanitizeOverrideValue(value: unknown, seen = new WeakSet<object>()): unknown {
   if (Array.isArray(value)) {
@@ -49,6 +64,8 @@ export function getConfigOverrides(): OverrideTree {
 
 export function resetConfigOverrides(): void {
   overrides = {};
+  clearConfigCache();
+  refreshRuntimeOverrideSnapshot();
 }
 
 export function setConfigOverride(
@@ -63,6 +80,8 @@ export function setConfigOverride(
     return { ok: false, error: parsed.error ?? "Invalid path." };
   }
   setConfigValueAtPath(overrides, parsed.path, sanitizeOverrideValue(value));
+  clearConfigCache();
+  refreshRuntimeOverrideSnapshot();
   return { ok: true };
 }
 
@@ -80,6 +99,10 @@ export function unsetConfigOverride(pathRaw: string): {
     };
   }
   const removed = unsetConfigValueAtPath(overrides, parsed.path);
+  if (removed) {
+    clearConfigCache();
+    refreshRuntimeOverrideSnapshot();
+  }
   return { ok: true, removed };
 }
 

@@ -80,6 +80,9 @@ export const SessionsPatchParamsSchema = Type.Object(
     execAsk: Type.Optional(Type.Union([NonEmptyString, Type.Null()])),
     execNode: Type.Optional(Type.Union([NonEmptyString, Type.Null()])),
     model: Type.Optional(Type.Union([NonEmptyString, Type.Null()])),
+    modelMode: Type.Optional(
+      Type.Union([Type.Literal("inherit"), Type.Literal("pinned"), Type.Null()]),
+    ),
     spawnedBy: Type.Optional(Type.Union([NonEmptyString, Type.Null()])),
     spawnedWorkspaceDir: Type.Optional(Type.Union([NonEmptyString, Type.Null()])),
     spawnDepth: Type.Optional(Type.Union([Type.Integer({ minimum: 0 }), Type.Null()])),

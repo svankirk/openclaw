@@ -13,6 +13,7 @@ function applyOpenAiSelection(entry: SessionEntry) {
 }
 
 function expectRuntimeModelFieldsCleared(entry: SessionEntry, before: number) {
+  expect(entry.modelMode).toBe("pinned");
   expect(entry.providerOverride).toBe("openai");
   expect(entry.modelOverride).toBe("gpt-5.2");
   expect(entry.modelProvider).toBeUndefined();
@@ -65,7 +66,7 @@ describe("applyModelOverrideToSessionEntry", () => {
     expect(entry.contextTokens).toBeUndefined();
   });
 
-  it("retains aligned runtime model fields when selection and runtime already match", () => {
+  it("writes modelMode while retaining aligned runtime fields on legacy pinned entries", () => {
     const before = Date.now() - 5_000;
     const entry: SessionEntry = {
       sessionId: "sess-3",
@@ -85,11 +86,12 @@ describe("applyModelOverrideToSessionEntry", () => {
       },
     });
 
-    expect(result.updated).toBe(false);
+    expect(result.updated).toBe(true);
+    expect(entry.modelMode).toBe("pinned");
     expect(entry.modelProvider).toBe("openai");
     expect(entry.model).toBe("gpt-5.2");
     expect(entry.contextTokens).toBe(200_000);
-    expect(entry.updatedAt).toBe(before);
+    expect((entry.updatedAt ?? 0) >= before).toBe(true);
   });
 
   it("clears stale contextTokens when switching back to the default model", () => {
@@ -114,7 +116,31 @@ describe("applyModelOverrideToSessionEntry", () => {
     expect(result.updated).toBe(true);
     expect(entry.providerOverride).toBeUndefined();
     expect(entry.modelOverride).toBeUndefined();
+    expect(entry.modelMode).toBe("inherit");
     expect(entry.contextTokens).toBeUndefined();
     expect((entry.updatedAt ?? 0) > before).toBe(true);
+  });
+
+  it("supports explicit pinned mode even when the selected model is the default", () => {
+    const before = Date.now() - 5_000;
+    const entry: SessionEntry = {
+      sessionId: "sess-5",
+      updatedAt: before,
+    };
+
+    const result = applyModelOverrideToSessionEntry({
+      entry,
+      selection: {
+        provider: "openai",
+        model: "gpt-5.2",
+        isDefault: true,
+        mode: "pinned",
+      },
+    });
+
+    expect(result.updated).toBe(true);
+    expect(entry.modelMode).toBe("pinned");
+    expect(entry.providerOverride).toBe("openai");
+    expect(entry.modelOverride).toBe("gpt-5.2");
   });
 });

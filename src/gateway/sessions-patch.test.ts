@@ -286,6 +286,7 @@ describe("gateway sessions patch", () => {
     expect(entry.authProfileOverride).toBeUndefined();
     expect(entry.authProfileOverrideSource).toBeUndefined();
     expect(entry.authProfileOverrideCompactionCount).toBeUndefined();
+    expect(entry.modelMode).toBe("pinned");
   });
 
   test.each([
@@ -313,6 +314,7 @@ describe("gateway sessions patch", () => {
     );
     expect(entry.providerOverride).toBe("anthropic");
     expect(entry.modelOverride).toBe("claude-sonnet-4-6");
+    expect(entry.modelMode).toBe("pinned");
   });
 
   test("sets spawnDepth for subagent sessions", async () => {
@@ -427,6 +429,7 @@ describe("gateway sessions patch", () => {
     // Selected model matches the target agent default, so no override is stored.
     expect(entry.providerOverride).toBeUndefined();
     expect(entry.modelOverride).toBeUndefined();
+    expect(entry.modelMode).toBe("inherit");
   });
 
   test("allows target agent subagents.model for subagent session even when missing from global allowlist", async () => {
@@ -438,6 +441,7 @@ describe("gateway sessions patch", () => {
     const entry = await applySubagentModelPatch(cfg);
     expect(entry.providerOverride).toBe("synthetic");
     expect(entry.modelOverride).toBe("hf:moonshotai/Kimi-K2.5");
+    expect(entry.modelMode).toBe("pinned");
   });
 
   test("allows global defaults.subagents.model for subagent session even when missing from global allowlist", async () => {
@@ -449,5 +453,54 @@ describe("gateway sessions patch", () => {
     const entry = await applySubagentModelPatch(cfg);
     expect(entry.providerOverride).toBe("synthetic");
     expect(entry.modelOverride).toBe("hf:moonshotai/Kimi-K2.5");
+    expect(entry.modelMode).toBe("pinned");
+  });
+
+  test("modelMode inherit clears model pin without needing model=null", async () => {
+    const store: Record<string, SessionEntry> = {
+      [MAIN_SESSION_KEY]: {
+        sessionId: "sess",
+        updatedAt: 1,
+        providerOverride: "openai",
+        modelOverride: "gpt-5.2",
+        modelMode: "pinned",
+      } as SessionEntry,
+    };
+    const entry = expectPatchOk(
+      await runPatch({
+        store,
+        patch: { key: MAIN_SESSION_KEY, modelMode: "inherit" },
+      }),
+    );
+    expect(entry.modelMode).toBe("inherit");
+    expect(entry.providerOverride).toBeUndefined();
+    expect(entry.modelOverride).toBeUndefined();
+  });
+
+  test("modelMode pinned pins the current effective default when no explicit model is supplied", async () => {
+    const cfg = {
+      agents: {
+        defaults: {
+          model: { primary: "anthropic/claude-sonnet-4-6" },
+        },
+      },
+    } as OpenClawConfig;
+    const entry = expectPatchOk(
+      await runPatch({
+        cfg,
+        patch: { key: MAIN_SESSION_KEY, modelMode: "pinned" },
+      }),
+    );
+    expect(entry.modelMode).toBe("pinned");
+    expect(entry.providerOverride).toBe("anthropic");
+    expect(entry.modelOverride).toBe("claude-sonnet-4-6");
+  });
+
+  test("rejects modelMode inherit when an explicit model is supplied", async () => {
+    const result = await runPatch({
+      patch: { key: MAIN_SESSION_KEY, model: "openai/gpt-5.2", modelMode: "inherit" },
+      loadGatewayModelCatalog: async () => [{ provider: "openai", id: "gpt-5.2", name: "gpt-5.2" }],
+    });
+    expectPatchError(result, 'modelMode "inherit" cannot be combined');
   });
 });

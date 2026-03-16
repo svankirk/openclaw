@@ -42,6 +42,31 @@ function buildProps(result: SessionsListResult): SessionsProps {
 }
 
 describe("sessions view", () => {
+  it("renders model source and mode details", async () => {
+    const container = document.createElement("div");
+    render(
+      renderSessions(
+        buildProps(
+          buildResult({
+            key: "agent:main:main",
+            kind: "direct",
+            updatedAt: Date.now(),
+            modelProvider: "openrouter",
+            model: "anthropic/claude-sonnet-4-6",
+            modelSource: "pinned",
+            modelMode: "pinned",
+          }),
+        ),
+      ),
+      container,
+    );
+    await Promise.resolve();
+
+    expect(container.textContent).toContain("openrouter/anthropic/claude-sonnet-4-6");
+    expect(container.textContent).toContain("session pin");
+    expect(container.textContent).toContain("pinned");
+  });
+
   it("renders verbose=full without falling back to inherit", async () => {
     const container = document.createElement("div");
     render(

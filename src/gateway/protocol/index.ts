@@ -64,6 +64,15 @@ import {
   ConfigApplyParamsSchema,
   type ConfigGetParams,
   ConfigGetParamsSchema,
+  type ConfigOverridesGetParams,
+  ConfigOverridesGetParamsSchema,
+  type ConfigOverridesResetParams,
+  ConfigOverridesResetParamsSchema,
+  ConfigOverridesResultSchema,
+  type ConfigOverridesSetParams,
+  ConfigOverridesSetParamsSchema,
+  type ConfigOverridesUnsetParams,
+  ConfigOverridesUnsetParamsSchema,
   type ConfigPatchParams,
   ConfigPatchParamsSchema,
   type ConfigSchemaLookupParams,
@@ -337,6 +346,18 @@ export const validateSessionsCompactParams = ajv.compile<SessionsCompactParams>(
 export const validateSessionsUsageParams =
   ajv.compile<SessionsUsageParams>(SessionsUsageParamsSchema);
 export const validateConfigGetParams = ajv.compile<ConfigGetParams>(ConfigGetParamsSchema);
+export const validateConfigOverridesGetParams = ajv.compile<ConfigOverridesGetParams>(
+  ConfigOverridesGetParamsSchema,
+);
+export const validateConfigOverridesSetParams = ajv.compile<ConfigOverridesSetParams>(
+  ConfigOverridesSetParamsSchema,
+);
+export const validateConfigOverridesUnsetParams = ajv.compile<ConfigOverridesUnsetParams>(
+  ConfigOverridesUnsetParamsSchema,
+);
+export const validateConfigOverridesResetParams = ajv.compile<ConfigOverridesResetParams>(
+  ConfigOverridesResetParamsSchema,
+);
 export const validateConfigSetParams = ajv.compile<ConfigSetParams>(ConfigSetParamsSchema);
 export const validateConfigApplyParams = ajv.compile<ConfigApplyParams>(ConfigApplyParamsSchema);
 export const validateConfigPatchParams = ajv.compile<ConfigPatchParams>(ConfigPatchParamsSchema);
@@ -498,6 +519,11 @@ export {
   SessionsCompactParamsSchema,
   SessionsUsageParamsSchema,
   ConfigGetParamsSchema,
+  ConfigOverridesGetParamsSchema,
+  ConfigOverridesSetParamsSchema,
+  ConfigOverridesUnsetParamsSchema,
+  ConfigOverridesResetParamsSchema,
+  ConfigOverridesResultSchema,
   ConfigSetParamsSchema,
   ConfigApplyParamsSchema,
   ConfigPatchParamsSchema,

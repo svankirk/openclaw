@@ -112,6 +112,7 @@ export type SessionEntry = {
   responseUsage?: "on" | "off" | "tokens" | "full";
   guardMode?: "watch" | "assist" | "implement";
   guardTask?: string;
+  modelMode?: "inherit" | "pinned";
   providerOverride?: string;
   modelOverride?: string;
   authProfileOverride?: string;

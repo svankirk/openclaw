@@ -61,6 +61,21 @@ All session state is **owned by the gateway** (the “master” OpenClaw). UI cl
 - In **remote mode**, the session store you care about lives on the remote gateway host, not your Mac.
 - Token counts shown in UIs come from the gateway’s store fields (`inputTokens`, `outputTokens`, `totalTokens`, `contextTokens`). Clients do not parse JSONL transcripts to “fix up” totals.
 
+## Session model policy
+
+Per-session model selection is stored with the session entry, not inferred solely from the global config.
+
+- `modelMode: "inherit"` means the session should follow agent/default model changes
+- `modelMode: "pinned"` means the session should keep using its session-level model override
+
+For backward compatibility, older entries without `modelMode` are inferred from whether they already have a stored model override.
+
+Gateway APIs may also report a `modelSource` alongside the effective model:
+
+- `default`: following agent/default configuration
+- `pinned`: using a stored session pin
+- `runtime`: reflecting the last model identity recorded by a completed run
+
 ## Where state lives
 
 - On the **gateway host**:

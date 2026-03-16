@@ -4,6 +4,7 @@ export type ModelOverrideSelection = {
   provider: string;
   model: string;
   isDefault?: boolean;
+  mode?: "inherit" | "pinned";
 };
 
 export function applyModelOverrideToSessionEntry(params: {
@@ -16,8 +17,13 @@ export function applyModelOverrideToSessionEntry(params: {
   const profileOverrideSource = params.profileOverrideSource ?? "user";
   let updated = false;
   let selectionUpdated = false;
+  const desiredMode = selection.mode ?? (selection.isDefault ? "inherit" : "pinned");
 
-  if (selection.isDefault) {
+  if (desiredMode === "inherit") {
+    if (entry.modelMode !== "inherit") {
+      entry.modelMode = "inherit";
+      updated = true;
+    }
     if (entry.providerOverride) {
       delete entry.providerOverride;
       updated = true;
@@ -29,6 +35,10 @@ export function applyModelOverrideToSessionEntry(params: {
       selectionUpdated = true;
     }
   } else {
+    if (entry.modelMode !== "pinned") {
+      entry.modelMode = "pinned";
+      updated = true;
+    }
     if (entry.providerOverride !== selection.provider) {
       entry.providerOverride = selection.provider;
       updated = true;

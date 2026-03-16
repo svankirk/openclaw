@@ -390,6 +390,10 @@ vi.mock("../config/config.js", async () => {
       changes: testState.migrationChanges,
     }),
     loadConfig: () => {
+      const runtimeSnapshot = actual.getRuntimeConfigSnapshot();
+      if (runtimeSnapshot) {
+        return runtimeSnapshot;
+      }
       const configPath = resolveConfigPath();
       let fileConfig: Record<string, unknown> = {};
       try {
@@ -522,7 +526,8 @@ vi.mock("../config/config.js", async () => {
         hooks,
         cron,
       };
-      return applyPluginAutoEnable({ config, env: process.env }).config;
+      const resolved = applyPluginAutoEnable({ config, env: process.env }).config;
+      return actual.applyConfigOverrides(resolved);
     },
     parseConfigJson5: (raw: string) => {
       try {

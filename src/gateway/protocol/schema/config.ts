@@ -9,6 +9,25 @@ const ConfigSchemaLookupPathString = Type.String({
 
 export const ConfigGetParamsSchema = Type.Object({}, { additionalProperties: false });
 
+export const ConfigOverridesGetParamsSchema = Type.Object({}, { additionalProperties: false });
+
+export const ConfigOverridesSetParamsSchema = Type.Object(
+  {
+    path: NonEmptyString,
+    value: Type.Unknown(),
+  },
+  { additionalProperties: false },
+);
+
+export const ConfigOverridesUnsetParamsSchema = Type.Object(
+  {
+    path: NonEmptyString,
+  },
+  { additionalProperties: false },
+);
+
+export const ConfigOverridesResetParamsSchema = Type.Object({}, { additionalProperties: false });
+
 export const ConfigSetParamsSchema = Type.Object(
   {
     raw: NonEmptyString,
@@ -71,6 +90,13 @@ export const ConfigSchemaResponseSchema = Type.Object(
     uiHints: Type.Record(Type.String(), ConfigUiHintSchema),
     version: NonEmptyString,
     generatedAt: NonEmptyString,
+  },
+  { additionalProperties: false },
+);
+
+export const ConfigOverridesResultSchema = Type.Object(
+  {
+    overrides: Type.Record(Type.String(), Type.Unknown()),
   },
   { additionalProperties: false },
 );

@@ -3,11 +3,15 @@ import { resolveAgentWorkspaceDir, resolveDefaultAgentId } from "../../agents/ag
 import { listChannelPlugins } from "../../channels/plugins/index.js";
 import {
   createConfigIO,
+  getConfigOverrides,
   loadConfig,
   parseConfigJson5,
   readConfigFileSnapshot,
   readConfigFileSnapshotForWrite,
+  resetConfigOverrides,
   resolveConfigSnapshotHash,
+  setConfigOverride,
+  unsetConfigOverride,
   validateConfigObjectWithPlugins,
   writeConfigFile,
 } from "../../config/config.js";
@@ -45,6 +49,10 @@ import {
   formatValidationErrors,
   validateConfigApplyParams,
   validateConfigGetParams,
+  validateConfigOverridesGetParams,
+  validateConfigOverridesResetParams,
+  validateConfigOverridesSetParams,
+  validateConfigOverridesUnsetParams,
   validateConfigPatchParams,
   validateConfigSchemaLookupParams,
   validateConfigSchemaLookupResult,
@@ -284,7 +292,76 @@ export const configHandlers: GatewayRequestHandlers = {
     }
     const snapshot = await readConfigFileSnapshot();
     const schema = loadSchemaWithPlugins();
-    respond(true, redactConfigSnapshot(snapshot, schema.uiHints), undefined);
+    respond(
+      true,
+      {
+        ...redactConfigSnapshot(snapshot, schema.uiHints),
+        runtimeOverrides: redactConfigObject(getConfigOverrides(), schema.uiHints),
+        effectiveConfig: redactConfigObject(loadConfig(), schema.uiHints),
+      },
+      undefined,
+    );
+  },
+  "config.overrides.get": ({ params, respond }) => {
+    if (
+      !assertValidParams(params, validateConfigOverridesGetParams, "config.overrides.get", respond)
+    ) {
+      return;
+    }
+    respond(true, { overrides: getConfigOverrides() }, undefined);
+  },
+  "config.overrides.set": ({ params, respond }) => {
+    if (
+      !assertValidParams(params, validateConfigOverridesSetParams, "config.overrides.set", respond)
+    ) {
+      return;
+    }
+    const result = setConfigOverride(params.path, params.value);
+    if (!result.ok) {
+      respond(
+        false,
+        undefined,
+        errorShape(ErrorCodes.INVALID_REQUEST, result.error ?? "Invalid override."),
+      );
+      return;
+    }
+    respond(true, { overrides: getConfigOverrides() }, undefined);
+  },
+  "config.overrides.unset": ({ params, respond }) => {
+    if (
+      !assertValidParams(
+        params,
+        validateConfigOverridesUnsetParams,
+        "config.overrides.unset",
+        respond,
+      )
+    ) {
+      return;
+    }
+    const result = unsetConfigOverride(params.path);
+    if (!result.ok) {
+      respond(
+        false,
+        undefined,
+        errorShape(ErrorCodes.INVALID_REQUEST, result.error ?? "Invalid override path."),
+      );
+      return;
+    }
+    respond(true, { overrides: getConfigOverrides() }, undefined);
+  },
+  "config.overrides.reset": ({ params, respond }) => {
+    if (
+      !assertValidParams(
+        params,
+        validateConfigOverridesResetParams,
+        "config.overrides.reset",
+        respond,
+      )
+    ) {
+      return;
+    }
+    resetConfigOverrides();
+    respond(true, { overrides: getConfigOverrides() }, undefined);
   },
   "config.schema": ({ params, respond }) => {
     if (!assertValidParams(params, validateConfigSchemaParams, "config.schema", respond)) {

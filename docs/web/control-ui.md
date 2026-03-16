@@ -75,12 +75,12 @@ The Control UI can localize itself on first load based on your browser locale, a
 - Stream tool calls + live tool output cards in Chat (agent events)
 - Channels: WhatsApp/Telegram/Discord/Slack + plugin channels (Mattermost, etc.) status + QR login + per-channel config (`channels.status`, `web.login.*`, `config.patch`)
 - Instances: presence list + refresh (`system-presence`)
-- Sessions: list + per-session thinking/fast/verbose/reasoning overrides and guard mode/task controls (`sessions.list`, `sessions.patch`)
+- Sessions: list + effective model source/policy visibility, per-session thinking/fast/verbose/reasoning overrides, and guard mode/task controls (`sessions.list`, `sessions.patch`)
 - Cron jobs: list/add/edit/run/enable/disable + run history (`cron.*`)
 - Skills: status, enable/disable, install, API key updates (`skills.*`)
 - Nodes: list + caps (`node.list`)
 - Exec approvals: edit gateway or node allowlists + ask policy for `exec host=gateway/node` (`exec.approvals.*`)
-- Config: view/edit `~/.openclaw/openclaw.json` (`config.get`, `config.set`)
+- Config: view/edit `~/.openclaw/openclaw.json`, inspect the live effective config, and apply ephemeral runtime overrides (`config.get`, `config.set`, `config.overrides.*`)
 - Config: apply + restart with validation (`config.apply`) and wake the last active session
 - Config writes include a base-hash guard to prevent clobbering concurrent edits
 - Config schema + form rendering (`config.schema`, including plugin + channel schemas); Raw JSON editor remains available

@@ -34,7 +34,7 @@ import {
   migrateAndPruneGatewaySessionStoreKey,
   readSessionPreviewItemsFromTranscript,
   resolveGatewaySessionStoreTarget,
-  resolveSessionModelRef,
+  resolveSessionModelState,
   resolveSessionTranscriptCandidates,
   type SessionsPatchResult,
   type SessionsPreviewEntry,
@@ -214,13 +214,15 @@ export const sessionsHandlers: GatewayRequestHandlers = {
     }
     const parsed = parseAgentSessionKey(target.canonicalKey ?? key);
     const agentId = normalizeAgentId(parsed?.agentId ?? resolveDefaultAgentId(cfg));
-    const resolved = resolveSessionModelRef(cfg, applied.entry, agentId);
+    const resolved = resolveSessionModelState(cfg, applied.entry, agentId);
     const result: SessionsPatchResult = {
       ok: true,
       path: storePath,
       key: target.canonicalKey,
       entry: applied.entry,
       resolved: {
+        mode: resolved.mode,
+        source: resolved.source,
         modelProvider: resolved.provider,
         model: resolved.model,
       },

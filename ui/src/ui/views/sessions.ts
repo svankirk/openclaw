@@ -325,6 +325,7 @@ export function renderSessions(props: SessionsProps) {
                 ${sortHeader("kind", "Kind")}
                 ${sortHeader("updated", "Updated")}
                 ${sortHeader("tokens", "Tokens")}
+                <th>Model</th>
                 <th>Thinking</th>
                 <th>Fast</th>
                 <th>Verbose</th>
@@ -339,7 +340,7 @@ export function renderSessions(props: SessionsProps) {
                 paginated.length === 0
                   ? html`
                       <tr>
-                        <td colspan="12" style="text-align: center; padding: 48px 16px; color: var(--muted)">
+                        <td colspan="13" style="text-align: center; padding: 48px 16px; color: var(--muted)">
                           No sessions found.
                         </td>
                       </tr>
@@ -423,6 +424,16 @@ function renderRow(
   const guardModes = withCurrentOption(GUARD_MODES, guardMode);
   const guardTask = row.guardTask ?? "";
   const guardTaskEnabled = guardMode === "implement";
+  const modelLabel = row.modelProvider
+    ? `${row.modelProvider}/${row.model ?? ""}`
+    : (row.model ?? "");
+  const modelSourceLabel =
+    row.modelSource === "runtime"
+      ? "last run"
+      : row.modelSource === "pinned"
+        ? "session pin"
+        : "agent default";
+  const modelModeLabel = row.modelMode === "pinned" ? "pinned" : "inherit";
   const displayName =
     typeof row.displayName === "string" && row.displayName.trim().length > 0
       ? row.displayName.trim()
@@ -475,6 +486,12 @@ function renderRow(
       </td>
       <td>${updated}</td>
       <td>${formatSessionTokens(row)}</td>
+      <td>
+        <div style="min-width: 220px;">
+          <div class="mono" style="font-size: 12px;">${modelLabel || "n/a"}</div>
+          <div class="muted" style="font-size: 11px;">${modelSourceLabel} · ${modelModeLabel}</div>
+        </div>
+      </td>
       <td>
         <select
           ?disabled=${disabled}

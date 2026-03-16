@@ -19,6 +19,7 @@ import {
   resolveGatewaySessionStoreTarget,
   resolveSessionModelIdentityRef,
   resolveSessionModelRef,
+  resolveSessionModelState,
   resolveSessionStoreKey,
 } from "./session-utils.js";
 
@@ -445,6 +446,22 @@ describe("resolveSessionModelRef", () => {
     expect(resolved).toEqual({ provider: "openai-codex", model: "gpt-5.3-codex" });
   });
 
+  test("ignores stale overrides when session modelMode is inherit", () => {
+    const cfg = createModelDefaultsConfig({
+      primary: "anthropic/claude-opus-4-6",
+    });
+
+    const resolved = resolveSessionModelRef(cfg, {
+      sessionId: "s2b",
+      updatedAt: Date.now(),
+      modelMode: "inherit",
+      modelOverride: "openai-codex/gpt-5.3-codex",
+      providerOverride: "openai-codex",
+    });
+
+    expect(resolved).toEqual({ provider: "anthropic", model: "claude-opus-4-6" });
+  });
+
   test("falls back to resolved provider for unprefixed legacy runtime model", () => {
     const cfg = createModelDefaultsConfig({
       primary: "google-gemini-cli/gemini-3-pro-preview",
@@ -563,6 +580,48 @@ describe("resolveSessionModelIdentityRef", () => {
     expect(resolved).toEqual({
       provider: "vercel-ai-gateway",
       model: "anthropic/claude-sonnet-4-6",
+    });
+  });
+});
+
+describe("resolveSessionModelState", () => {
+  test("reports pinned source for explicit session override", () => {
+    const cfg = createModelDefaultsConfig({
+      primary: "anthropic/claude-opus-4-6",
+    });
+
+    const resolved = resolveSessionModelState(cfg, {
+      sessionId: "state-1",
+      updatedAt: Date.now(),
+      modelMode: "pinned",
+      providerOverride: "openai",
+      modelOverride: "gpt-5.2",
+    });
+
+    expect(resolved).toEqual({
+      mode: "pinned",
+      source: "pinned",
+      provider: "openai",
+      model: "gpt-5.2",
+    });
+  });
+
+  test("reports default source when session inherits defaults", () => {
+    const cfg = createModelDefaultsConfig({
+      primary: "anthropic/claude-opus-4-6",
+    });
+
+    const resolved = resolveSessionModelState(cfg, {
+      sessionId: "state-2",
+      updatedAt: Date.now(),
+      modelMode: "inherit",
+    });
+
+    expect(resolved).toEqual({
+      mode: "inherit",
+      source: "default",
+      provider: "anthropic",
+      model: "claude-opus-4-6",
     });
   });
 });
