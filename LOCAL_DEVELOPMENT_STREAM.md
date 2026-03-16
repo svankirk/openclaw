@@ -2,11 +2,19 @@
 
 This worktree is the local integration branch that carries site-specific changes on top of upstream OpenClaw.
 
+## Remotes
+
+- `origin`: upstream OpenClaw, fetch only
+- `fork`: personal fork, fetch and push
+
+Pushes to `origin` are disabled on purpose to avoid accidental pushes to upstream.
+
 ## Branch Roles
 
-- `origin/main`: upstream OpenClaw
+- `origin/main`: upstream base branch
+- `fork/local/devstream`: published integration branch
 - `local/guard-mode-fence-wip`: snapshot of current local feature work
-- `local/devstream`: integration branch for local changes on top of upstream
+- `local/devstream`: local integration branch for site-specific changes on top of upstream
 
 ## Current Layout
 
@@ -36,9 +44,17 @@ If rebase is awkward for a larger local patch stack, merge `origin/main` instead
 git -C /home/scott/dev/openclaw-devstream merge --no-ff local/<feature-branch>
 ```
 
-4. Keep local-only changes small and isolated. Prefer one branch per feature so individual changes can be proposed upstream or carried locally without dragging unrelated work forward.
+4. Publish the updated integration branch:
+
+```bash
+git -C /home/scott/dev/openclaw-devstream push
+```
+
+`local/devstream` tracks `fork/local/devstream`, so a plain `git push` is enough.
+
+5. Keep local-only changes small and isolated. Prefer one branch per feature so individual changes can be proposed upstream or carried locally without dragging unrelated work forward.
 
 ## Notes
 
-- A GitHub fork was not configured during setup because local GitHub authentication was unavailable.
-- If you later authenticate with GitHub, add a personal fork as another remote and push `local/devstream` there for backup or PR work.
+- PRs should be opened from `fork/local/devstream` or from smaller feature branches pushed to `fork`.
+- If a local-only branch becomes upstreamable, branch it from `origin/main` or rebase it there before opening the PR to avoid dragging unrelated local patches into review.
